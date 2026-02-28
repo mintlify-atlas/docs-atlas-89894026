@@ -1,0 +1,239 @@
+---
+title: SaveManager
+description: Manages automatic saving of project changes with debouncing
+---
+
+## Overview
+
+The SaveManager automatically saves project changes to local storage. It watches for timeline and scene changes, debounces save operations, and provides manual control over the save lifecycle.
+
+## Constructor options
+
+```typescript
+type SaveManagerOptions = {
+  debounceMs?: number; // Default: 800ms
+}
+```
+
+The SaveManager is initialized by EditorCore with default options.
+
+## Methods
+
+### start()
+
+Starts automatic saving by subscribing to timeline and scene changes.
+
+```typescript
+start(): void
+```
+
+<Info>
+The SaveManager is automatically started when EditorCore is initialized.
+</Info>
+
+**Example**
+
+```typescript
+const editor = EditorCore.getInstance();
+editor.save.start(); // Usually not needed - called automatically
+```
+
+### stop()
+
+Stops automatic saving and clears all subscriptions.
+
+```typescript
+stop(): void
+```
+
+**Example**
+
+```typescript
+const editor = EditorCore.getInstance();
+editor.save.stop();
+```
+
+### pause()
+
+Temporarily pauses automatic saving without unsubscribing.
+
+```typescript
+pause(): void
+```
+
+**Example**
+
+```typescript
+const editor = EditorCore.getInstance();
+
+// Pause auto-save during bulk operations
+editor.save.pause();
+
+// Make multiple changes...
+editor.timeline.addTrack({ type: 'video' });
+editor.timeline.addTrack({ type: 'audio' });
+
+// Resume auto-save
+editor.save.resume();
+```
+
+<Tip>
+Use `pause()` and `resume()` during bulk operations to avoid excessive save calls.
+</Tip>
+
+### resume()
+
+Resumes automatic saving after being paused.
+
+```typescript
+resume(): void
+```
+
+**Example**
+
+```typescript
+const editor = EditorCore.getInstance();
+editor.save.resume();
+```
+
+<Info>
+If there are pending changes when resuming, a save will be queued immediately.
+</Info>
+
+### markDirty()
+
+Manually marks the project as having unsaved changes.
+
+```typescript
+markDirty({ force = false }: { force?: boolean } = {}): void
+```
+
+<ParamField path="force" type="boolean" default="false">
+  If true, marks dirty even when paused
+</ParamField>
+
+**Example**
+
+```typescript
+const editor = EditorCore.getInstance();
+editor.save.markDirty();
+```
+
+<Note>
+Normally you don't need to call this manually - the SaveManager automatically detects timeline and scene changes.
+</Note>
+
+### flush()
+
+Immediately saves all pending changes without waiting for the debounce timer.
+
+```typescript
+async flush(): Promise<void>
+```
+
+**Example**
+
+```typescript
+const editor = EditorCore.getInstance();
+
+// Make some changes
+editor.timeline.addTrack({ type: 'video' });
+
+// Force immediate save
+await editor.save.flush();
+```
+
+<Warning>
+Use `flush()` sparingly - the debounce mechanism is designed to prevent excessive save operations.
+</Warning>
+
+### getIsDirty()
+
+Checks if there are unsaved changes or if a save is in progress.
+
+```typescript
+getIsDirty(): boolean
+```
+
+**Returns**
+
+- `boolean` - True if there are pending changes or a save is in progress
+
+**Example**
+
+```typescript
+const editor = EditorCore.getInstance();
+
+if (editor.save.getIsDirty()) {
+  console.log('There are unsaved changes');
+}
+```
+
+## How it works
+
+### Debouncing
+
+The SaveManager uses a debounce mechanism (default 800ms) to batch multiple changes into a single save operation. When changes are detected:
+
+1. The save timer is reset
+2. After 800ms of no changes, the project is saved
+3. If new changes occur during the timer, it resets again
+
+### Automatic detection
+
+The SaveManager automatically subscribes to:
+
+- Timeline changes (via `editor.timeline.subscribe()`)
+- Scene changes (via `editor.scenes.subscribe()`)
+
+### Save conditions
+
+A save operation will **not** run if:
+
+- No active project exists
+- The SaveManager is paused (unless `force: true`)
+- A save is already in progress
+- A project is currently loading
+- A project migration is in progress
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Pause during bulk operations">
+    ```typescript
+    editor.save.pause();
+    
+    // Perform multiple operations
+    for (const track of tracks) {
+      editor.timeline.addTrack(track);
+    }
+    
+    editor.save.resume();
+    ```
+  </Accordion>
+  
+  <Accordion title="Flush before navigation">
+    ```typescript
+    // Before leaving the editor
+    await editor.save.flush();
+    router.push('/projects');
+    ```
+  </Accordion>
+  
+  <Accordion title="Check dirty state before closing">
+    ```typescript
+    window.addEventListener('beforeunload', (e) => {
+      if (editor.save.getIsDirty()) {
+        e.preventDefault();
+        e.returnValue = 'You have unsaved changes';
+      }
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## See also
+
+- [EditorCore](/api/editor-core) - The singleton editor instance
+- [ProjectManager](/api/project-manager) - Project lifecycle and saving
+- [Project management feature](/features/project-management) - User guide

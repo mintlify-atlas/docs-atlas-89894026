@@ -73,7 +73,11 @@
               "api/timeline-manager",
               "api/scene-manager",
               "api/project-manager",
-              "api/media-manager"
+              "api/media-manager",
+              "api/renderer-manager",
+              "api/audio-manager",
+              "api/save-manager",
+              "api/selection-manager"
             ]
           },
           {

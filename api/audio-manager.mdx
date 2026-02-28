@@ -1,0 +1,187 @@
+---
+title: AudioManager
+description: Manages audio playback, mixing, and synchronization with video timeline
+---
+
+## Overview
+
+The AudioManager handles real-time audio playback synchronized with the video timeline. It uses the Web Audio API to mix multiple audio tracks, schedule audio clips with lookahead, and maintain synchronization during playback.
+
+<Info>
+The AudioManager is an internal manager that runs automatically. You typically don't interact with it directly - use the PlaybackManager to control playback.
+</Info>
+
+## Architecture
+
+### Audio scheduling
+
+The AudioManager uses a lookahead scheduling system:
+
+- **Lookahead window**: 2 seconds ahead of current playback time
+- **Schedule interval**: 500ms (checks for new clips to schedule)
+- **Automatic synchronization**: Maintains sync even during timeline changes
+
+### Audio graph
+
+```
+[Audio Clips] → [AudioBufferSourceNode] → [GainNode] → [AudioContext.destination]
+                                          (Master Volume)
+```
+
+## How it works
+
+### Initialization
+
+The AudioManager automatically:
+
+1. Subscribes to playback state changes
+2. Subscribes to timeline changes
+3. Subscribes to media asset changes
+4. Listens for seek events
+
+### Playback lifecycle
+
+<Steps>
+  <Step title="Playback starts">
+    Collects audio clips from timeline tracks and media assets
+  </Step>
+  
+  <Step title="Clip scheduling">
+    Schedules audio clips within the lookahead window (2 seconds ahead)
+  </Step>
+  
+  <Step title="Audio decoding">
+    Uses mediabunny to decode audio from media files into AudioBuffers
+  </Step>
+  
+  <Step title="Playback">
+    Creates AudioBufferSourceNodes and schedules them with precise timing
+  </Step>
+  
+  <Step title="Continuous scheduling">
+    Every 500ms, checks for new clips entering the lookahead window
+  </Step>
+</Steps>
+
+### Timeline synchronization
+
+When the timeline changes (elements added/removed/modified):
+
+1. All active audio sinks are disposed
+2. If playback is active, audio restarts from the current time
+3. New audio clips are collected and scheduled
+
+### Seeking behavior
+
+- **During scrubbing**: Audio is stopped
+- **Seek while playing**: Audio restarts from the new time
+- **Seek while paused**: Audio remains stopped
+
+## Volume control
+
+Volume is controlled through the PlaybackManager:
+
+```typescript
+const editor = EditorCore.getInstance();
+
+// Set volume (0 to 1)
+editor.playback.setVolume({ volume: 0.5 });
+
+// Mute/unmute
+editor.playback.toggleMute();
+```
+
+The AudioManager automatically responds to volume changes by updating the master GainNode.
+
+## Audio format support
+
+The AudioManager uses the `mediabunny` library which supports all formats handled by the browser's audio decoding capabilities:
+
+- MP3
+- WAV
+- OGG
+- AAC
+- FLAC
+- And more (depends on browser)
+
+## Performance considerations
+
+### Memory management
+
+The AudioManager manages memory efficiently:
+
+- Audio buffers are cached per source file
+- Clips share the same audio sink if they reference the same media file
+- When timeline changes, unused sinks are disposed
+- Audio iterators are cancelled when no longer needed
+
+### Scheduling precision
+
+The lookahead system ensures smooth playback:
+
+- Audio is scheduled ahead of time to avoid gaps
+- If decoding falls behind, playback waits to catch up
+- Target ahead time: 1 second (buffers are paused if more than 1 second ahead)
+
+## Cleanup
+
+The AudioManager automatically cleans up when:
+
+- Playback stops
+- Timeline changes
+- The editor is reset
+
+```typescript
+// Manual cleanup (rarely needed)
+editor.audio.dispose();
+```
+
+<Warning>
+Calling `dispose()` manually will break audio playback. Only use this when completely destroying the editor instance.
+</Warning>
+
+## Integration with other managers
+
+The AudioManager integrates with:
+
+- **PlaybackManager** - Responds to play/pause/seek/volume changes
+- **TimelineManager** - Collects audio clips from timeline tracks
+- **MediaManager** - Retrieves audio files for playback
+
+## Technical details
+
+### Audio clips
+
+Each audio clip has:
+
+```typescript
+type AudioClipSource = {
+  id: string;              // Unique clip identifier
+  sourceKey: string;       // Media asset key (for caching)
+  file: Blob;             // Audio file blob
+  startTime: number;      // Timeline start time (seconds)
+  duration: number;       // Clip duration (seconds)
+  trimStart: number;      // Trim from start of source (seconds)
+  muted: boolean;         // Whether the clip is muted
+}
+```
+
+### Session IDs
+
+Each playback session has a unique ID. This prevents old scheduled audio from playing after a seek or timeline change:
+
+```typescript
+if (sessionId !== this.playbackSessionId) return; // Skip old audio
+```
+
+## Limitations
+
+- Maximum lookahead: 2 seconds (to keep memory usage reasonable)
+- Schedule interval: 500ms (cannot be adjusted)
+- Requires Web Audio API support (all modern browsers)
+
+## See also
+
+- [PlaybackManager](/api/playback-manager) - Control playback and volume
+- [TimelineManager](/api/timeline-manager) - Manage timeline tracks
+- [MediaManager](/api/media-manager) - Manage media assets

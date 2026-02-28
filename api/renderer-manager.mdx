@@ -1,0 +1,230 @@
+---
+title: RendererManager
+description: Manages video rendering, snapshot capture, and video export
+---
+
+## Overview
+
+The RendererManager handles rendering operations including real-time preview rendering, snapshot capture, and video export. It maintains the render tree and coordinates with the CanvasRenderer and SceneExporter services.
+
+## Properties
+
+### renderTree
+
+The current render tree (RootNode) used for rendering the scene.
+
+```typescript
+private renderTree: RootNode | null
+```
+
+<Note>
+The render tree is managed internally. Use `setRenderTree()` and `getRenderTree()` to interact with it.
+</Note>
+
+## Methods
+
+### setRenderTree()
+
+Sets the current render tree for the scene.
+
+```typescript
+setRenderTree({ renderTree }: { renderTree: RootNode | null }): void
+```
+
+<ParamField path="renderTree" type="RootNode | null" required>
+  The root node of the render tree, or null to clear it
+</ParamField>
+
+**Example**
+
+```typescript
+const editor = EditorCore.getInstance();
+const renderTree = buildScene({ tracks, mediaAssets, duration, canvasSize, background });
+editor.renderer.setRenderTree({ renderTree });
+```
+
+### getRenderTree()
+
+Returns the current render tree.
+
+```typescript
+getRenderTree(): RootNode | null
+```
+
+**Returns**
+
+- `RootNode | null` - The current render tree, or null if not set
+
+**Example**
+
+```typescript
+const editor = EditorCore.getInstance();
+const renderTree = editor.renderer.getRenderTree();
+```
+
+### saveSnapshot()
+
+Captures the current frame as a PNG image and downloads it.
+
+```typescript
+async saveSnapshot(): Promise<{ success: boolean; error?: string }>
+```
+
+**Returns**
+
+- `success` - Whether the snapshot was captured successfully
+- `error` - Error message if the snapshot failed
+
+**Example**
+
+```typescript
+const editor = EditorCore.getInstance();
+const result = await editor.renderer.saveSnapshot();
+
+if (result.success) {
+  console.log('Snapshot saved');
+} else {
+  console.error('Snapshot failed:', result.error);
+}
+```
+
+<Info>
+The snapshot is saved with a filename format: `{project-name}-{timecode}.png`
+</Info>
+
+**Error conditions:**
+
+- No project or render tree available
+- Project is empty (duration = 0)
+- Failed to create image blob
+
+### exportProject()
+
+Exports the project as a video file.
+
+```typescript
+async exportProject({
+  options
+}: {
+  options: ExportOptions
+}): Promise<ExportResult>
+```
+
+<ParamField path="options" type="ExportOptions" required>
+  Export configuration options
+</ParamField>
+
+<Expandable title="ExportOptions properties">
+  <ParamField path="format" type="'mp4' | 'webm'" required>
+    Output video format
+  </ParamField>
+  <ParamField path="quality" type="'low' | 'medium' | 'high' | 'very-high'" required>
+    Video quality preset
+  </ParamField>
+  <ParamField path="fps" type="number">
+    Frame rate (defaults to project FPS)
+  </ParamField>
+  <ParamField path="includeAudio" type="boolean">
+    Whether to include audio tracks
+  </ParamField>
+  <ParamField path="onProgress" type="(progress: { progress: number }) => void">
+    Progress callback (0 to 1)
+  </ParamField>
+  <ParamField path="onCancel" type="() => boolean">
+    Function that returns true if export should be cancelled
+  </ParamField>
+</Expandable>
+
+**Returns**
+
+<Expandable title="ExportResult properties">
+  <ResponseField name="success" type="boolean">
+    Whether the export succeeded
+  </ResponseField>
+  <ResponseField name="buffer" type="ArrayBuffer">
+    The exported video data (only if success is true)
+  </ResponseField>
+  <ResponseField name="error" type="string">
+    Error message (only if success is false)
+  </ResponseField>
+  <ResponseField name="cancelled" type="boolean">
+    Whether the export was cancelled
+  </ResponseField>
+</Expandable>
+
+**Example**
+
+```typescript
+const editor = EditorCore.getInstance();
+
+const result = await editor.renderer.exportProject({
+  options: {
+    format: 'mp4',
+    quality: 'high',
+    includeAudio: true,
+    onProgress: ({ progress }) => {
+      console.log(`Export progress: ${Math.round(progress * 100)}%`);
+    },
+    onCancel: () => exportCancelled // boolean flag
+  }
+});
+
+if (result.success && result.buffer) {
+  const blob = new Blob([result.buffer], { type: 'video/mp4' });
+  // Download or process the video blob
+} else if (result.cancelled) {
+  console.log('Export cancelled');
+} else {
+  console.error('Export failed:', result.error);
+}
+```
+
+**Error conditions:**
+
+- No active project
+- Project is empty (duration = 0)
+- Failed to create audio buffer
+- Export processing error
+
+<Tip>
+If `includeAudio` is true, the progress bar accounts for audio processing time (5% of total progress).
+</Tip>
+
+### subscribe()
+
+Subscribes to renderer state changes.
+
+```typescript
+subscribe(listener: () => void): () => void
+```
+
+<ParamField path="listener" type="() => void" required>
+  Function called when render tree changes
+</ParamField>
+
+**Returns**
+
+- `() => void` - Unsubscribe function
+
+**Example**
+
+```typescript
+const editor = EditorCore.getInstance();
+
+const unsubscribe = editor.renderer.subscribe(() => {
+  console.log('Render tree changed');
+});
+
+// Later, to unsubscribe:
+unsubscribe();
+```
+
+<Note>
+If using the `useEditor()` hook in React, subscriptions are handled automatically.
+</Note>
+
+## See also
+
+- [EditorCore](/api/editor-core) - The singleton editor instance
+- [ProjectManager](/api/project-manager) - Project settings including canvas size and FPS
+- [Export feature](/features/export) - User guide for video export

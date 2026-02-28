@@ -1,0 +1,247 @@
+---
+title: SelectionManager
+description: Manages currently selected timeline elements
+---
+
+## Overview
+
+The SelectionManager tracks which timeline elements are currently selected by the user. It maintains a list of element references and notifies subscribers when the selection changes.
+
+## Selection format
+
+Selected elements are represented as references:
+
+```typescript
+type ElementRef = {
+  trackId: string;    // ID of the track containing the element
+  elementId: string;  // ID of the element
+}
+```
+
+## Methods
+
+### getSelectedElements()
+
+Returns the currently selected elements.
+
+```typescript
+getSelectedElements(): ElementRef[]
+```
+
+**Returns**
+
+- `ElementRef[]` - Array of selected element references
+
+**Example**
+
+```typescript
+const editor = EditorCore.getInstance();
+const selected = editor.selection.getSelectedElements();
+
+console.log(`${selected.length} elements selected`);
+```
+
+### setSelectedElements()
+
+Sets the current selection to the specified elements.
+
+```typescript
+setSelectedElements({ elements }: { elements: ElementRef[] }): void
+```
+
+<ParamField path="elements" type="ElementRef[]" required>
+  Array of element references to select
+</ParamField>
+
+**Example**
+
+```typescript
+const editor = EditorCore.getInstance();
+
+// Select specific elements
+editor.selection.setSelectedElements({
+  elements: [
+    { trackId: 'track-1', elementId: 'element-1' },
+    { trackId: 'track-2', elementId: 'element-2' }
+  ]
+});
+```
+
+<Info>
+Setting elements triggers a notification to all subscribers.
+</Info>
+
+### clearSelection()
+
+Clears all selected elements.
+
+```typescript
+clearSelection(): void
+```
+
+**Example**
+
+```typescript
+const editor = EditorCore.getInstance();
+editor.selection.clearSelection();
+```
+
+### subscribe()
+
+Subscribes to selection changes.
+
+```typescript
+subscribe(listener: () => void): () => void
+```
+
+<ParamField path="listener" type="() => void" required>
+  Function called when selection changes
+</ParamField>
+
+**Returns**
+
+- `() => void` - Unsubscribe function
+
+**Example**
+
+```typescript
+const editor = EditorCore.getInstance();
+
+const unsubscribe = editor.selection.subscribe(() => {
+  const selected = editor.selection.getSelectedElements();
+  console.log('Selection changed:', selected);
+});
+
+// Later, to unsubscribe:
+unsubscribe();
+```
+
+<Note>
+If using the `useEditor()` hook in React, subscriptions are handled automatically.
+</Note>
+
+## Usage patterns
+
+### Select all elements
+
+```typescript
+const editor = EditorCore.getInstance();
+const tracks = editor.timeline.getTracks();
+
+const allElements: ElementRef[] = [];
+for (const track of tracks) {
+  for (const element of track.elements) {
+    allElements.push({
+      trackId: track.id,
+      elementId: element.id
+    });
+  }
+}
+
+editor.selection.setSelectedElements({ elements: allElements });
+```
+
+### Get selected element data
+
+```typescript
+const editor = EditorCore.getInstance();
+const selected = editor.selection.getSelectedElements();
+
+const elementsWithTracks = editor.timeline.getElementsWithTracks();
+
+for (const { trackId, elementId } of selected) {
+  const item = elementsWithTracks.find(
+    item => item.track.id === trackId && item.element.id === elementId
+  );
+  
+  if (item) {
+    console.log('Selected element:', item.element);
+    console.log('On track:', item.track);
+  }
+}
+```
+
+### Delete selected elements
+
+```typescript
+const editor = EditorCore.getInstance();
+const selected = editor.selection.getSelectedElements();
+
+if (selected.length > 0) {
+  editor.timeline.deleteElements({ refs: selected });
+  editor.selection.clearSelection();
+}
+```
+
+### Toggle selection
+
+```typescript
+function toggleElementSelection(ref: ElementRef) {
+  const editor = EditorCore.getInstance();
+  const selected = editor.selection.getSelectedElements();
+  
+  const index = selected.findIndex(
+    s => s.trackId === ref.trackId && s.elementId === ref.elementId
+  );
+  
+  if (index >= 0) {
+    // Remove from selection
+    selected.splice(index, 1);
+  } else {
+    // Add to selection
+    selected.push(ref);
+  }
+  
+  editor.selection.setSelectedElements({ elements: selected });
+}
+```
+
+## Integration with actions
+
+Many actions operate on selected elements:
+
+```typescript
+import { invokeAction } from '@/lib/actions';
+
+// Delete selected
+invokeAction('delete-selected');
+
+// Duplicate selected
+invokeAction('duplicate-selected');
+
+// Copy selected
+invokeAction('copy-selected');
+
+// Mute/unmute selected
+invokeAction('toggle-elements-muted-selected');
+
+// Show/hide selected
+invokeAction('toggle-elements-visibility-selected');
+```
+
+See the [Actions documentation](/api/actions) for the full list of selection-based actions.
+
+## React integration
+
+In React components, use the `useEditor()` hook to automatically react to selection changes:
+
+```tsx
+import { useEditor } from '@/hooks/use-editor';
+
+function SelectionInfo() {
+  const editor = useEditor();
+  const selected = editor.selection.getSelectedElements();
+  
+  return (
+    <div>
+      {selected.length} element(s) selected
+    </div>
+  );
+}
+```
+
+## See also
+
+- [EditorCore](/api/editor-core) - The singleton editor instance
+- [TimelineManager](/api/timeline-manager) - Working with timeline elements
+- [Actions](/api/actions) - Selection-based actions
