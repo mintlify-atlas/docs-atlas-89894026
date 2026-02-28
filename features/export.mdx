@@ -1,0 +1,310 @@
+---
+title: Export
+description: Export your finished videos in multiple formats and quality settings from OpenCut
+---
+
+OpenCut provides powerful export capabilities that render your timeline to video files you can share, upload, or use in other applications.
+
+## Export basics
+
+### Starting an export
+
+Export your project to a video file:
+
+<Steps>
+  <Step title="Click Export button">
+    Click the blue "Export" button in the top-right corner of the editor.
+  </Step>
+  
+  <Step title="Configure settings">
+    Choose format, quality, and audio options in the export dialog.
+  </Step>
+  
+  <Step title="Start export">
+    Click "Export" to begin rendering your video.
+  </Step>
+  
+  <Step title="Wait for completion">
+    Watch the progress bar as your video renders. This may take several minutes depending on project length and quality.
+  </Step>
+  
+  <Step title="Download file">
+    When complete, the video file downloads automatically to your default downloads folder.
+  </Step>
+</Steps>
+
+Source: `apps/web/src/components/editor/export-button.tsx:34-144`
+
+## Export formats
+
+OpenCut supports two video formats:
+
+<CardGroup cols={2}>
+  <Card title="MP4 (H.264)" icon="film">
+    **Best for compatibility**
+    
+    - Most widely supported format
+    - Works on all devices and platforms
+    - Better compatibility with video editors
+    - Slightly larger file size
+    - Recommended for most use cases
+    
+    **Use when:** Sharing videos, uploading to social media, or importing into other software.
+  </Card>
+  
+  <Card title="WebM (VP9)" icon="video">
+    **Best for file size**
+    
+    - More efficient compression
+    - Smaller file sizes
+    - Open source codec
+    - Limited compatibility on older devices
+    - Great for web playback
+    
+    **Use when:** Optimizing for web delivery or when file size is critical.
+  </Card>
+</CardGroup>
+
+Source: `apps/web/src/types/export.ts:8`
+
+## Quality settings
+
+Choose the quality level that balances file size and visual quality:
+
+| Quality | Bitrate | Use case | File size |
+|---------|---------|----------|----------|
+| **Low** | Lowest | Preview exports, quick drafts | Smallest |
+| **Medium** | Moderate | General sharing, social media | Balanced |
+| **High** | High | Recommended for most projects | Larger |
+| **Very High** | Highest | Maximum quality, archival | Largest |
+
+<Info>
+**High quality** is the default and recommended for most projects. It provides excellent visual quality while keeping file sizes reasonable.
+</Info>
+
+Source: `apps/web/src/types/export.ts:1-6`
+
+### Quality vs. file size
+
+Understanding the tradeoffs:
+
+- **Higher quality** = Better visual fidelity, larger files, longer upload times
+- **Lower quality** = Faster exports, smaller files, visible compression artifacts
+- **Very High** is best for archival or when you'll re-encode later
+- **Medium** is often sufficient for social media (platforms re-encode anyway)
+
+Source: `apps/web/src/services/renderer/scene-exporter.ts:29-36`
+
+## Export options
+
+### Frame rate
+
+The export uses your project's frame rate setting by default:
+
+- **24 fps** - Film look, smaller file size
+- **30 fps** - Standard for web video
+- **60 fps** - Smooth motion, larger file size
+
+You can override the frame rate during export if needed.
+
+Source: `apps/web/src/types/export.ts:16`
+
+### Audio
+
+Control whether audio is included:
+
+- **Include audio** (default) - Exports video with all audio tracks mixed
+- **Mute audio** - Exports silent video (video only)
+
+<Note>
+If your project has no audio tracks or all audio is muted, the audio toggle has no effect.
+</Note>
+
+Audio export includes:
+- All unmuted audio tracks
+- Audio from video elements (unless muted)
+- Proper volume levels and mixing
+- Synchronized to video frames
+
+Source: `apps/web/src/components/editor/export-button.tsx:89-91`
+
+## Export process
+
+### Rendering stages
+
+Exports happen in multiple stages:
+
+<Steps>
+  <Step title="Audio preparation (if enabled)">
+    Creates the audio buffer by mixing all audio sources.
+    
+    Progress: 0-5%
+  </Step>
+  
+  <Step title="Scene building">
+    Constructs the render tree from your timeline.
+    
+    Progress: 5-10%
+  </Step>
+  
+  <Step title="Video encoding">
+    Renders each frame and encodes to video format.
+    
+    Progress: 10-95%
+  </Step>
+  
+  <Step title="Finalizing">
+    Combines video and audio into final file.
+    
+    Progress: 95-100%
+  </Step>
+</Steps>
+
+Source: `apps/web/src/core/managers/renderer-manager.ts:89-184`
+
+### Progress tracking
+
+Monitor export progress:
+
+- **Progress bar** shows percentage complete
+- **Current percentage** displayed numerically
+- Export runs in the background (don't close the browser tab)
+- You can cancel anytime by clicking "Cancel"
+
+Source: `apps/web/src/components/editor/export-button.tsx:257-277`
+
+### Canceling exports
+
+Stop an export in progress:
+
+1. Click the "Cancel" button during export
+2. The export stops immediately
+3. No file is downloaded
+4. You can start a new export with different settings
+
+Canceled exports don't create partial files.
+
+Source: `apps/web/src/core/managers/renderer-manager.ts:149-165`
+
+## File naming
+
+Exported files are named automatically:
+
+- Uses your project name
+- Adds the file extension (`.mp4` or `.webm`)
+- Invalid characters are replaced with hyphens
+- Example: `"My Summer Vacation"` → `My-Summer-Vacation.mp4`
+
+Source: `apps/web/src/components/editor/export-button.tsx:134`
+
+## Snapshot exports
+
+Capture a single frame as an image:
+
+<Steps>
+  <Step title="Position playhead">
+    Move the playhead to the frame you want to capture.
+  </Step>
+  
+  <Step title="Take snapshot">
+    Use the snapshot feature (camera icon or keyboard shortcut).
+  </Step>
+  
+  <Step title="Download image">
+    The frame is exported as PNG and downloads immediately.
+  </Step>
+</Steps>
+
+Snapshot features:
+- Always exports at project canvas resolution
+- PNG format for lossless quality
+- Filename includes timecode (e.g., `Project-00-01-23-15.png`)
+- Perfect for thumbnails or social media posts
+
+Source: `apps/web/src/core/managers/renderer-manager.ts:26-87`
+
+## Troubleshooting exports
+
+### Export failed
+
+If an export fails:
+
+1. Check the error message in the export dialog
+2. Click "Copy" to copy the error details
+3. Click "Retry" to try again
+4. Common causes:
+   - Browser ran out of memory
+   - Missing media files
+   - Corrupted project data
+
+Source: `apps/web/src/components/editor/export-button.tsx:293-337`
+
+### Slow exports
+
+Export speed depends on:
+
+- **Project length** - Longer videos take more time
+- **Quality setting** - Higher quality = slower encoding
+- **Computer performance** - Faster CPU = faster exports
+- **Project complexity** - More tracks and effects slow down rendering
+- **Format** - WebM/VP9 encoding is slower than MP4/H.264
+
+<Tip>
+For very long projects, consider exporting overnight or during lunch breaks.
+</Tip>
+
+### Large file sizes
+
+If exported files are too large:
+
+- Try a lower quality setting (High → Medium)
+- Consider WebM format for better compression
+- Reduce project resolution in settings
+- Lower the frame rate if smooth motion isn't critical
+
+### Missing audio
+
+If exported video has no audio:
+
+- Check that "Include audio" is enabled
+- Verify audio tracks aren't muted
+- Ensure video elements with audio aren't muted
+- Check volume levels (very low volume may seem silent)
+
+Source: `apps/web/src/lib/media/audio.ts`
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Test with low quality first" icon="gauge">
+    Export a quick Low quality version to check timing and edits before waiting for a High quality render.
+  </Card>
+  
+  <Card title="Use High quality for finals" icon="star">
+    The High quality setting provides excellent results for most use cases without excessive file sizes.
+  </Card>
+  
+  <Card title="Choose MP4 for compatibility" icon="check">
+    When in doubt, use MP4 format. It works everywhere and is widely supported.
+  </Card>
+  
+  <Card title="Don't close browser during export" icon="window-close">
+    Keep the browser tab open while exporting. Closing it will cancel the export.
+  </Card>
+</CardGroup>
+
+## Export defaults
+
+Default export settings:
+
+```typescript
+{
+  format: "mp4",      // MP4 (H.264)
+  quality: "high",    // High quality
+  includeAudio: true  // Audio enabled
+}
+```
+
+Source: `apps/web/src/constants/export-constants.ts:3-7`
+
+These defaults provide a good balance of quality, compatibility, and file size for most projects.

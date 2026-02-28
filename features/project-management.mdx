@@ -1,0 +1,360 @@
+---
+title: Project management
+description: Create, save, and organize your video projects in OpenCut
+---
+
+OpenCut provides a complete project management system that stores all your work locally in your browser. Projects include your timeline, media assets, settings, and edit history.
+
+## Creating projects
+
+### New project
+
+Start a new video project:
+
+<Steps>
+  <Step title="Click New Project">
+    From the home screen, click the "New Project" button or use the keyboard shortcut.
+  </Step>
+  
+  <Step title="Enter project name">
+    Give your project a descriptive name (e.g., "Summer Vacation 2024" or "Product Demo").
+  </Step>
+  
+  <Step title="Start editing">
+    Your new project opens with a default main scene and empty timeline, ready for content.
+  </Step>
+</Steps>
+
+Each new project starts with:
+- One main scene named "Main scene"
+- Default canvas size (1920x1080)
+- Default frame rate (30 fps)
+- Default background color (black)
+- Empty timeline with no tracks
+
+Source: `apps/web/src/core/managers/project-manager.ts:76-118`
+
+## Project structure
+
+### What's included in a project
+
+Every OpenCut project contains:
+
+<AccordionGroup>
+  <Accordion title="Metadata">
+    - Project name
+    - Unique ID
+    - Creation date
+    - Last updated date
+    - Project duration
+    - Thumbnail image
+  </Accordion>
+
+  <Accordion title="Scenes">
+    - One or more scenes (compositions)
+    - Each scene has its own timeline with tracks
+    - Bookmarks and markers
+    - Scene settings
+  </Accordion>
+
+  <Accordion title="Settings">
+    - Canvas size (width x height)
+    - Frame rate (fps)
+    - Background color or image
+    - Original canvas size (if resized)
+  </Accordion>
+
+  <Accordion title="Media assets">
+    All uploaded media files:
+    - Video files
+    - Audio files
+    - Image files
+    - References to library assets (sounds, stickers)
+  </Accordion>
+
+  <Accordion title="Timeline view state">
+    Your workspace preferences:
+    - Zoom level
+    - Scroll position  
+    - Playhead time
+  </Accordion>
+</AccordionGroup>
+
+Source: `apps/web/src/types/project.ts`
+
+## Saving projects
+
+### Auto-save
+
+OpenCut automatically saves your work:
+
+- Saves occur after every editing action
+- Saves are throttled to avoid performance issues
+- A save indicator appears when saving
+- All data is stored locally in your browser
+
+<Info>
+Your work is saved automatically. There's no "Save" button because you never need it.
+</Info>
+
+Source: `apps/web/src/core/managers/save-manager.ts`
+
+### Manual save
+
+While auto-save handles most situations, you can force a save:
+
+- Close the project - triggers a final save and thumbnail update
+- Exit the editor - ensures latest changes are persisted
+
+Source: `apps/web/src/core/managers/project-manager.ts:170-191`
+
+## Managing projects
+
+### Project library
+
+Access all your projects from the home screen:
+
+- **Recent projects** appear first
+- Each project shows:
+  - Thumbnail preview
+  - Project name
+  - Duration
+  - Last modified date
+- Click any project to open it
+
+Source: `apps/web/src/core/managers/project-manager.ts:197-215`
+
+### Searching projects
+
+Find projects quickly:
+
+1. Use the search box in the project library
+2. Type any part of the project name
+3. Results filter in real-time
+4. Clear the search to see all projects
+
+Source: `apps/web/src/core/managers/project-manager.ts:471-502`
+
+### Sorting projects
+
+Organize your project library:
+
+| Sort option | Description |
+|-------------|-------------|
+| **Date (newest)** | Most recently modified first |
+| **Date (oldest)** | Oldest projects first |
+| **Name (A-Z)** | Alphabetical by name |
+| **Name (Z-A)** | Reverse alphabetical |
+| **Duration (longest)** | Longest projects first |
+| **Duration (shortest)** | Shortest projects first |
+
+Source: `apps/web/src/core/managers/project-manager.ts:471-502`
+
+### Renaming projects
+
+Change a project's name:
+
+<Steps>
+  <Step title="Access options">
+    Right-click the project card or click the menu icon.
+  </Step>
+  
+  <Step title="Choose rename">
+    Select "Rename" from the menu.
+  </Step>
+  
+  <Step title="Enter new name">
+    Type the new name and press Enter or click Save.
+  </Step>
+</Steps>
+
+The project's updated timestamp changes when renamed.
+
+Source: `apps/web/src/core/managers/project-manager.ts:259-299`
+
+### Duplicating projects
+
+Create a copy of an existing project:
+
+<Steps>
+  <Step title="Select project(s)">
+    Right-click a project or select multiple projects.
+  </Step>
+  
+  <Step title="Choose duplicate">
+    Click "Duplicate" from the menu.
+  </Step>
+  
+  <Step title="Copy created">
+    A new project is created with the name "(2) Original Name" format.
+  </Step>
+</Steps>
+
+Duplicates include:
+- Complete timeline and all edits
+- All media assets
+- All scenes and settings
+- Independent copy (changes don't affect original)
+
+Source: `apps/web/src/core/managers/project-manager.ts:301-425`
+
+<Note>
+Duplicate numbering is smart. If you duplicate "(2) Project Name", the new copy becomes "(3) Project Name".
+</Note>
+
+### Deleting projects
+
+Remove projects you no longer need:
+
+<Steps>
+  <Step title="Select project(s)">
+    Right-click a project or select multiple projects.
+  </Step>
+  
+  <Step title="Choose delete">
+    Click "Delete" from the menu.
+  </Step>
+  
+  <Step title="Confirm deletion">
+    Confirm the deletion in the dialog that appears.
+  </Step>
+</Steps>
+
+<Warning>
+Deleted projects cannot be recovered. This action is permanent.
+</Warning>
+
+Deleting removes:
+- The project and all its data
+- All uploaded media assets for that project
+- All edit history
+- All scenes and settings
+
+Source: `apps/web/src/core/managers/project-manager.ts:217-249`
+
+## Project settings
+
+Configure project-level settings:
+
+### Canvas size
+
+Set the output resolution:
+
+- **1920x1080** (Full HD) - Default
+- **1280x720** (HD)
+- **3840x2160** (4K)
+- **Custom dimensions**
+
+Changing canvas size affects:
+- Preview window dimensions
+- Export resolution
+- Element positioning (scaled automatically)
+
+### Frame rate (FPS)
+
+Set the playback and export frame rate:
+
+- **24 fps** - Film standard
+- **30 fps** - Default, web standard  
+- **60 fps** - Smooth motion
+
+Source: `apps/web/src/constants/project-constants.ts`
+
+### Background
+
+Choose what appears behind your content:
+
+- **Solid color** - Single color background
+- **Transparent** - For overlays and compositing
+- **Image** - Custom background image
+
+Source: `apps/web/src/core/managers/project-manager.ts:427-443`
+
+## Data storage
+
+### Where projects are stored
+
+OpenCut uses browser storage:
+
+- **IndexedDB** for project data and metadata
+- **Local storage** for preferences
+- All data stays on your device
+- Nothing is sent to external servers
+
+<Info>
+Your privacy is protected. OpenCut is completely offline-capable and stores all data locally.
+</Info>
+
+### Storage limits
+
+Browser storage limitations:
+
+- Most browsers allow several GB of storage
+- Quota depends on available disk space
+- You'll be warned if storage is running low
+- Consider exporting and deleting old projects
+
+Source: `apps/web/src/services/storage/service.ts`
+
+### Migrations
+
+OpenCut automatically updates project data format:
+
+- When you open an old project, it migrates to the latest version
+- Migration progress is shown for large projects
+- Original data is preserved during migration
+- Migrated projects work with the latest features
+
+Source: `apps/web/src/services/storage/migrations/index.ts`
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Use descriptive names" icon="tag">
+    Name projects clearly so you can find them later (e.g., "Client Q4 Promo" not "Video 1").
+  </Card>
+  
+  <Card title="Duplicate before major changes" icon="copy">
+    Create a duplicate before trying risky edits or major restructuring.
+  </Card>
+  
+  <Card title="Delete old projects" icon="trash">
+    Regularly remove completed or abandoned projects to free up storage space.
+  </Card>
+  
+  <Card title="Export finished projects" icon="download">
+    Once a project is complete and exported, consider deleting it to save space.
+  </Card>
+</CardGroup>
+
+## Troubleshooting
+
+### Project won't load
+
+If a project fails to load:
+
+1. Refresh the browser
+2. Clear browser cache
+3. Check available storage space
+4. Try opening a different project
+
+Source: `apps/web/src/core/managers/project-manager.ts:120-168`
+
+### Storage quota exceeded
+
+If you run out of storage:
+
+1. Delete old or unused projects
+2. Export projects and remove source media
+3. Clear browser cache and data
+4. Use browser settings to increase quota (if available)
+
+### Missing media assets
+
+If media assets don't load:
+
+- Assets are tied to specific projects
+- Deleting a project removes its media
+- Re-import media if needed
+
+Source: `apps/web/src/core/managers/media-manager.ts`

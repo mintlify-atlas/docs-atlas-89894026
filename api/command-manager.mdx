@@ -1,0 +1,335 @@
+---
+title: CommandManager
+description: CommandManager API for managing undo/redo history
+---
+
+The `CommandManager` class manages the command history stack and provides undo/redo functionality in OpenCut.
+
+## Overview
+
+CommandManager maintains two stacks:
+- **History stack**: Commands that have been executed (can be undone)
+- **Redo stack**: Commands that have been undone (can be redone)
+
+Access the CommandManager through the editor singleton:
+
+```typescript
+import { EditorCore } from '@/core';
+
+const editor = EditorCore.getInstance();
+const commandManager = editor.commands;
+```
+
+## Methods
+
+### execute()
+
+Executes a command and adds it to the history stack.
+
+<ParamField path="command" type="Command" required>
+  The command to execute
+</ParamField>
+
+**Returns**: `Command` - The executed command
+
+```typescript
+import { DeleteElementsCommand } from '@/lib/commands';
+
+const command = new DeleteElementsCommand([
+  { trackId: "track-1", elementId: "element-1" },
+]);
+
+editor.commands.execute({ command });
+```
+
+**Behavior**:
+- Calls `command.execute()`
+- Pushes command to history stack
+- Clears the redo stack (new actions invalidate redo history)
+
+### push()
+
+Adds a command to the history without executing it. Useful when you've already executed the command manually.
+
+<ParamField path="command" type="Command" required>
+  The command to add to history
+</ParamField>
+
+```typescript
+const command = new MyCommand();
+command.execute(); // Execute manually
+
+editor.commands.push({ command }); // Add to history without re-executing
+```
+
+**Behavior**:
+- Adds command to history stack (without executing)
+- Clears the redo stack
+
+### undo()
+
+Undoes the most recent command in the history.
+
+```typescript
+editor.commands.undo();
+```
+
+**Behavior**:
+- Pops the last command from history stack
+- Calls `command.undo()`
+- Pushes command to redo stack
+- Does nothing if history is empty
+
+### redo()
+
+Redoes the most recently undone command.
+
+```typescript
+editor.commands.redo();
+```
+
+**Behavior**:
+- Pops the last command from redo stack
+- Calls `command.redo()`
+- Pushes command back to history stack
+- Does nothing if redo stack is empty
+
+### canUndo()
+
+Checks if there are commands that can be undone.
+
+**Returns**: `boolean` - True if history stack is not empty
+
+```typescript
+if (editor.commands.canUndo()) {
+  // Enable undo button
+}
+```
+
+### canRedo()
+
+Checks if there are commands that can be redone.
+
+**Returns**: `boolean` - True if redo stack is not empty
+
+```typescript
+if (editor.commands.canRedo()) {
+  // Enable redo button
+}
+```
+
+### clear()
+
+Clears both history and redo stacks.
+
+```typescript
+editor.commands.clear();
+```
+
+**Use cases**:
+- When loading a new project
+- After saving (to mark a clean state)
+- On explicit user request
+
+## Usage examples
+
+### Execute and undo
+
+```typescript
+import { EditorCore } from '@/core';
+import { SplitElementsCommand } from '@/lib/commands';
+
+const editor = EditorCore.getInstance();
+
+// Execute a command
+const command = new SplitElementsCommand(
+  [{ trackId: "track-1", elementId: "element-1" }],
+  5.0,
+  "both",
+);
+
+editor.commands.execute({ command });
+
+// Undo the operation
+editor.commands.undo();
+
+// Redo the operation
+editor.commands.redo();
+```
+
+### Check undo/redo availability
+
+```typescript
+function EditorToolbar() {
+  const editor = useEditor();
+  
+  return (
+    <>
+      <button
+        disabled={!editor.commands.canUndo()}
+        onClick={() => editor.commands.undo()}
+      >
+        Undo
+      </button>
+      <button
+        disabled={!editor.commands.canRedo()}
+        onClick={() => editor.commands.redo()}
+      >
+        Redo
+      </button>
+    </>
+  );
+}
+```
+
+### Batch operations
+
+```typescript
+import { BatchCommand, DeleteElementsCommand, AddTrackCommand } from '@/lib/commands';
+
+// Execute multiple commands as one undoable operation
+const batch = new BatchCommand([
+  new DeleteElementsCommand([{ trackId: "track-1", elementId: "element-1" }]),
+  new AddTrackCommand('media'),
+]);
+
+editor.commands.execute({ command: batch });
+
+// Single undo reverts all operations
+editor.commands.undo();
+```
+
+### Clear history on project load
+
+```typescript
+async function loadProject(projectId: string) {
+  await editor.project.load({ projectId });
+  
+  // Clear history when loading new project
+  editor.commands.clear();
+}
+```
+
+## Integration with actions
+
+The undo/redo actions in `@/lib/actions/definitions.ts` are connected to CommandManager:
+
+```typescript
+// In use-editor-actions.ts
+useActionHandler(
+  "undo",
+  () => {
+    editor.commands.undo();
+  },
+  undefined,
+);
+
+useActionHandler(
+  "redo",
+  () => {
+    editor.commands.redo();
+  },
+  undefined,
+);
+```
+
+This allows users to trigger undo/redo via:
+- Keyboard shortcuts (`Ctrl+Z`, `Ctrl+Shift+Z`)
+- UI buttons
+- Programmatic calls to `invokeAction("undo")` / `invokeAction("redo")`
+
+## Implementation details
+
+The CommandManager is a simple class with two arrays:
+
+```typescript
+export class CommandManager {
+  private history: Command[] = [];
+  private redoStack: Command[] = [];
+
+  execute({ command }: { command: Command }): Command {
+    command.execute();
+    this.history.push(command);
+    this.redoStack = []; // Clear redo stack
+    return command;
+  }
+
+  push({ command }: { command: Command }): void {
+    this.history.push(command);
+    this.redoStack = [];
+  }
+
+  undo(): void {
+    if (this.history.length === 0) return;
+    const command = this.history.pop();
+    command?.undo();
+    if (command) {
+      this.redoStack.push(command);
+    }
+  }
+
+  redo(): void {
+    if (this.redoStack.length === 0) return;
+    const command = this.redoStack.pop();
+    command?.redo();
+    if (command) {
+      this.history.push(command);
+    }
+  }
+
+  canUndo(): boolean {
+    return this.history.length > 0;
+  }
+
+  canRedo(): boolean {
+    return this.redoStack.length > 0;
+  }
+
+  clear(): void {
+    this.history = [];
+    this.redoStack = [];
+  }
+}
+```
+
+## Best practices
+
+### Always use commands for undoable operations
+
+```typescript
+// Good - creates undoable operation
+const command = new DeleteElementsCommand([...]);
+editor.commands.execute({ command });
+
+// Bad - direct mutation, can't undo
+editor.timeline.deleteElements([...]);
+```
+
+### Clear history at appropriate times
+
+```typescript
+// Good - clear on major state changes
+await editor.project.load({ projectId });
+editor.commands.clear();
+
+// Bad - clearing too often loses undo capability
+editor.commands.execute({ command: myCommand });
+editor.commands.clear(); // Why clear immediately after?
+```
+
+### Check availability before undo/redo
+
+```typescript
+// Good - check before calling
+if (editor.commands.canUndo()) {
+  editor.commands.undo();
+}
+
+// Also fine - undo() handles empty stack gracefully
+editor.commands.undo(); // Does nothing if can't undo
+```
+
+## Related
+
+- [Actions](/api/actions) - Action system for user operations
+- [Commands](/api/commands) - Command pattern and base class

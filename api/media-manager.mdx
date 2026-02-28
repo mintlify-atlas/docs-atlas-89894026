@@ -1,0 +1,313 @@
+---
+title: MediaManager
+description: Manages media assets for projects
+---
+
+## Overview
+
+The MediaManager handles media asset storage, retrieval, and lifecycle management. Media assets include videos, images, and audio files. Access it through `editor.media`.
+
+## Usage
+
+### Adding media assets
+
+```typescript
+const project = editor.project.getActive();
+
+// Add a video asset
+await editor.media.addMediaAsset({
+  projectId: project.metadata.id,
+  asset: {
+    type: 'video',
+    name: 'my-video.mp4',
+    url: videoObjectURL,
+    duration: 30.5,
+    thumbnailUrl: thumbnailObjectURL,
+    metadata: {
+      width: 1920,
+      height: 1080,
+      fps: 30
+    }
+  }
+});
+```
+
+### Getting and removing assets
+
+```typescript
+// Get all assets
+const assets = editor.media.getAssets();
+
+// Remove an asset
+await editor.media.removeMediaAsset({
+  projectId: project.metadata.id,
+  id: 'asset-123'
+});
+```
+
+## Methods
+
+### addMediaAsset()
+
+Adds a media asset to the project.
+
+```typescript
+addMediaAsset({
+  projectId,
+  asset
+}: {
+  projectId: string;
+  asset: Omit<MediaAsset, 'id'>;
+}): Promise<void>
+```
+
+<ParamField path="projectId" type="string" required>
+  ID of the project to add the asset to
+</ParamField>
+
+<ParamField path="asset" type="Omit<MediaAsset, 'id'>" required>
+  Media asset data (ID is auto-generated)
+</ParamField>
+
+**Example**
+
+```typescript
+await editor.media.addMediaAsset({
+  projectId: 'project-123',
+  asset: {
+    type: 'video',
+    name: 'clip.mp4',
+    url: blobURL,
+    duration: 10.5,
+    thumbnailUrl: thumbURL,
+    metadata: {
+      width: 1920,
+      height: 1080,
+      fps: 30
+    }
+  }
+});
+```
+
+<Note>
+If saving fails, the asset is automatically removed from memory.
+</Note>
+
+### removeMediaAsset()
+
+Removes a media asset from the project.
+
+```typescript
+removeMediaAsset({
+  projectId,
+  id
+}: {
+  projectId: string;
+  id: string;
+}): Promise<void>
+```
+
+<ParamField path="projectId" type="string" required>
+  ID of the project
+</ParamField>
+
+<ParamField path="id" type="string" required>
+  ID of the media asset to remove
+</ParamField>
+
+**Example**
+
+```typescript
+await editor.media.removeMediaAsset({
+  projectId: 'project-123',
+  id: 'media-asset-456'
+});
+```
+
+<Note>
+Removing a media asset also deletes all timeline elements that reference it.
+</Note>
+
+### getAssets()
+
+Returns all media assets for the current project.
+
+```typescript
+getAssets(): MediaAsset[]
+```
+
+**Returns**
+
+- `MediaAsset[]` - Array of media assets
+
+**Example**
+
+```typescript
+const assets = editor.media.getAssets();
+console.log(`Total assets: ${assets.length}`);
+
+for (const asset of assets) {
+  console.log(`${asset.name}: ${asset.type}`);
+}
+```
+
+### setAssets()
+
+Sets the media assets. Used internally when loading projects.
+
+```typescript
+setAssets({ assets }: { assets: MediaAsset[] }): void
+```
+
+<ParamField path="assets" type="MediaAsset[]" required>
+  Array of media assets to set
+</ParamField>
+
+**Example**
+
+```typescript
+editor.media.setAssets({ assets: loadedAssets });
+```
+
+### isLoadingMedia()
+
+Returns whether media is currently loading.
+
+```typescript
+isLoadingMedia(): boolean
+```
+
+**Returns**
+
+- `boolean` - True if loading
+
+**Example**
+
+```typescript
+if (editor.media.isLoadingMedia()) {
+  console.log('Loading media assets...');
+}
+```
+
+## Project lifecycle methods
+
+### loadProjectMedia()
+
+Loads all media assets for a project. Called internally when loading a project.
+
+```typescript
+loadProjectMedia({ projectId }: { projectId: string }): Promise<void>
+```
+
+<ParamField path="projectId" type="string" required>
+  ID of the project to load media for
+</ParamField>
+
+**Example**
+
+```typescript
+await editor.media.loadProjectMedia({ projectId: 'project-123' });
+```
+
+### clearProjectMedia()
+
+Clears all media assets for a project from storage.
+
+```typescript
+clearProjectMedia({ projectId }: { projectId: string }): Promise<void>
+```
+
+<ParamField path="projectId" type="string" required>
+  ID of the project to clear media from
+</ParamField>
+
+**Example**
+
+```typescript
+await editor.media.clearProjectMedia({ projectId: 'project-123' });
+```
+
+<Warning>
+This permanently deletes all media assets for the project from storage.
+</Warning>
+
+### clearAllAssets()
+
+Clears all media assets from memory. Called internally when closing a project.
+
+```typescript
+clearAllAssets(): void
+```
+
+**Example**
+
+```typescript
+editor.media.clearAllAssets();
+```
+
+<Note>
+This only clears assets from memory, not from storage. It also revokes all object URLs and clears the video cache.
+</Note>
+
+### subscribe()
+
+Subscribes to media state changes.
+
+```typescript
+subscribe(listener: () => void): () => void
+```
+
+<ParamField path="listener" type="() => void" required>
+  Function called when media state changes
+</ParamField>
+
+**Returns**
+
+- `() => void` - Unsubscribe function
+
+**Example**
+
+```typescript
+const unsubscribe = editor.media.subscribe(() => {
+  console.log('Media assets changed');
+});
+
+// Later: cleanup
+unsubscribe();
+```
+
+<Note>
+The `useEditor()` hook automatically subscribes to media changes. Only use `subscribe()` directly in non-React code.
+</Note>
+
+## MediaAsset type
+
+Media assets have the following structure:
+
+```typescript
+interface MediaAsset {
+  id: string;
+  type: 'video' | 'image' | 'audio';
+  name: string;
+  url: string;
+  duration?: number;
+  thumbnailUrl?: string;
+  metadata?: {
+    width?: number;
+    height?: number;
+    fps?: number;
+    // ... other metadata
+  };
+}
+```
+
+**Example usage:**
+
+```typescript
+const assets = editor.media.getAssets();
+
+const videos = assets.filter(asset => asset.type === 'video');
+const images = assets.filter(asset => asset.type === 'image');
+
+console.log(`Videos: ${videos.length}, Images: ${images.length}`);
+```

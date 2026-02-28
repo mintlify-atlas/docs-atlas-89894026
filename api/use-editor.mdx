@@ -1,0 +1,128 @@
+---
+title: useEditor()
+description: React hook that provides access to the EditorCore singleton instance
+---
+
+## Overview
+
+The `useEditor()` hook returns the singleton EditorCore instance and automatically subscribes to all manager changes, triggering component re-renders when state updates.
+
+<Note>
+Always use `useEditor()` in React components. For non-React code (utilities, event handlers), use `EditorCore.getInstance()` directly.
+</Note>
+
+## Signature
+
+```typescript
+function useEditor(): EditorCore
+```
+
+## Returns
+
+<ParamField path="EditorCore" type="EditorCore">
+  The singleton EditorCore instance with access to all managers:
+  - `command`: CommandManager - Handle undo/redo
+  - `playback`: PlaybackManager - Control playback state
+  - `timeline`: TimelineManager - Manage tracks and elements
+  - `scenes`: ScenesManager - Manage scenes and bookmarks
+  - `project`: ProjectManager - Manage project settings
+  - `media`: MediaManager - Handle media assets
+  - `renderer`: RendererManager - Control rendering
+  - `save`: SaveManager - Handle auto-save
+  - `audio`: AudioManager - Manage audio
+  - `selection`: SelectionManager - Track selections
+</ParamField>
+
+## Behavior
+
+The hook uses `useSyncExternalStore` to subscribe to changes from all managers:
+- Playback manager
+- Timeline manager
+- Scenes manager
+- Project manager
+- Media manager
+- Renderer manager
+- Selection manager
+
+When any manager's state changes, the component automatically re-renders with the latest data.
+
+## Examples
+
+### Basic usage
+
+```typescript
+import { useEditor } from '@/hooks/use-editor';
+
+function MyComponent() {
+  const editor = useEditor();
+  const tracks = editor.timeline.getTracks();
+
+  return <div>{tracks.length} tracks</div>;
+}
+```
+
+### Accessing playback state
+
+```typescript
+import { useEditor } from '@/hooks/use-editor';
+
+function PlaybackControls() {
+  const editor = useEditor();
+  const isPlaying = editor.playback.getIsPlaying();
+  const currentTime = editor.playback.getCurrentTime();
+  const totalDuration = editor.timeline.getTotalDuration();
+
+  return (
+    <div>
+      <p>Time: {currentTime} / {totalDuration}</p>
+      <button onClick={() => editor.playback.toggle()}>
+        {isPlaying ? 'Pause' : 'Play'}
+      </button>
+    </div>
+  );
+}
+```
+
+### Working with project settings
+
+```typescript
+import { useEditor } from '@/hooks/use-editor';
+
+function ProjectInfo() {
+  const editor = useEditor();
+  const fps = editor.project.getActive().settings.fps;
+
+  return <div>FPS: {fps}</div>;
+}
+```
+
+### Calling manager methods
+
+```typescript
+import { useEditor } from '@/hooks/use-editor';
+
+function TimelineControls() {
+  const editor = useEditor();
+
+  const handleSeek = (time: number) => {
+    editor.playback.seek({ time });
+  };
+
+  const handleAddTrack = () => {
+    editor.timeline.addTrack({ type: 'media' });
+  };
+
+  return (
+    <div>
+      <button onClick={() => handleSeek(0)}>Go to start</button>
+      <button onClick={handleAddTrack}>Add track</button>
+    </div>
+  );
+}
+```
+
+## See also
+
+- [EditorCore](/api/editor-core) - The singleton editor instance
+- [useEditorActions](/api/use-editor-actions) - Register action handlers
+- [useActionHandler](/api/use-editor-actions#useactionhandler) - Register individual action handlers

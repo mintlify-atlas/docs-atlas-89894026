@@ -1,0 +1,520 @@
+---
+title: Testing
+description: Testing approach and guidelines for OpenCut
+---
+
+OpenCut uses a pragmatic testing approach focused on critical functionality and preventing regressions.
+
+## Testing philosophy
+
+Our testing strategy prioritizes:
+
+1. **Core editor functionality** - Timeline, playback, commands, actions
+2. **Data integrity** - Storage migrations, project serialization
+3. **Critical paths** - Export, import, save/load
+4. **Regression prevention** - Tests for previously fixed bugs
+
+We don't require 100% code coverage. Instead, we focus on testing the most important and fragile parts of the codebase.
+
+## Test framework
+
+OpenCut uses **Bun's built-in test runner**, which provides:
+
+- Fast execution
+- TypeScript support out of the box
+- Jest-compatible API
+- Built-in mocking and assertions
+
+## Running tests
+
+From the project root:
+
+<CodeGroup>
+  ```bash Run all tests
+  bun test
+  ```
+
+  ```bash Run tests in watch mode
+  bun test --watch
+  ```
+
+  ```bash Run specific test file
+  bun test path/to/test.test.ts
+  ```
+
+  ```bash Run tests with coverage
+  bun test --coverage
+  ```
+</CodeGroup>
+
+## Test structure
+
+Tests are located alongside the code they test in `__tests__` directories:
+
+```
+lib/
+├── stickers/
+│   ├── sticker-id.ts
+│   └── __tests__/
+│       └── sticker-id.test.ts
+services/
+├── storage/
+│   ├── migrations/
+│   │   ├── v0-to-v1.ts
+│   │   ├── v1-to-v2.ts
+│   │   └── __tests__/
+│   │       ├── v0-to-v1.test.ts
+│   │       ├── v1-to-v2.test.ts
+│   │       └── v2-to-v3.test.ts
+```
+
+## Writing tests
+
+### Basic test structure
+
+```typescript
+import { describe, expect, test } from "bun:test";
+import { functionToTest } from "../module";
+
+describe("feature name", () => {
+  test("should do something specific", () => {
+    const result = functionToTest(input);
+    expect(result).toBe(expectedOutput);
+  });
+
+  test("should handle edge case", () => {
+    expect(() => functionToTest(invalidInput)).toThrow();
+  });
+});
+```
+
+### Example: Testing a utility function
+
+```typescript
+import { describe, expect, test } from "bun:test";
+import { buildStickerId, parseStickerId } from "../sticker-id";
+
+describe("sticker-id", () => {
+  test("parses provider-prefixed IDs", () => {
+    expect(parseStickerId({ stickerId: "icons:mdi:home" })).toEqual({
+      providerId: "icons",
+      providerValue: "mdi:home",
+    });
+  });
+
+  test("throws for IDs without provider prefix", () => {
+    expect(() => parseStickerId({ stickerId: "home" })).toThrow();
+  });
+
+  test("throws for malformed IDs", () => {
+    expect(() => parseStickerId({ stickerId: "" })).toThrow();
+    expect(() => parseStickerId({ stickerId: "icons:" })).toThrow();
+  });
+
+  test("builds sticker IDs correctly", () => {
+    expect(
+      buildStickerId({
+        providerId: "flags",
+        providerValue: "US",
+      })
+    ).toBe("flags:US");
+  });
+});
+```
+
+### Example: Testing data migrations
+
+Storage migrations are critical and should be thoroughly tested:
+
+```typescript
+import { describe, expect, test } from "bun:test";
+import { migrateV0ToV1 } from "../v0-to-v1";
+
+describe("storage migration v0 to v1", () => {
+  test("migrates basic project structure", () => {
+    const v0Data = {
+      version: 0,
+      project: {
+        name: "My Project",
+        tracks: [],
+      },
+    };
+
+    const result = migrateV0ToV1(v0Data);
+
+    expect(result.version).toBe(1);
+    expect(result.project.name).toBe("My Project");
+  });
+
+  test("handles missing optional fields", () => {
+    const v0Data = {
+      version: 0,
+      project: {},
+    };
+
+    expect(() => migrateV0ToV1(v0Data)).not.toThrow();
+  });
+
+  test("preserves existing data", () => {
+    const v0Data = {
+      version: 0,
+      project: {
+        name: "Test",
+        customField: "value",
+      },
+    };
+
+    const result = migrateV0ToV1(v0Data);
+
+    expect(result.project.customField).toBe("value");
+  });
+});
+```
+
+## Testing EditorCore and managers
+
+### Resetting the singleton between tests
+
+```typescript
+import { describe, expect, test, beforeEach } from "bun:test";
+import { EditorCore } from "@/core";
+
+describe("EditorCore", () => {
+  beforeEach(() => {
+    // Reset singleton before each test
+    EditorCore.reset();
+  });
+
+  test("creates singleton instance", () => {
+    const editor1 = EditorCore.getInstance();
+    const editor2 = EditorCore.getInstance();
+
+    expect(editor1).toBe(editor2);
+  });
+
+  test("initializes all managers", () => {
+    const editor = EditorCore.getInstance();
+
+    expect(editor.timeline).toBeDefined();
+    expect(editor.playback).toBeDefined();
+    expect(editor.scenes).toBeDefined();
+  });
+});
+```
+
+### Testing manager functionality
+
+```typescript
+import { describe, expect, test, beforeEach } from "bun:test";
+import { EditorCore } from "@/core";
+
+describe("TimelineManager", () => {
+  let editor: EditorCore;
+
+  beforeEach(() => {
+    EditorCore.reset();
+    editor = EditorCore.getInstance();
+  });
+
+  test("adds track to timeline", () => {
+    const tracksBefore = editor.timeline.getTracks().length;
+    
+    editor.timeline.addTrack({ type: "media" });
+    
+    const tracksAfter = editor.timeline.getTracks().length;
+    expect(tracksAfter).toBe(tracksBefore + 1);
+  });
+
+  test("removes track by id", () => {
+    const track = editor.timeline.addTrack({ type: "media" });
+    
+    editor.timeline.removeTrack(track.id);
+    
+    const tracks = editor.timeline.getTracks();
+    expect(tracks.find(t => t.id === track.id)).toBeUndefined();
+  });
+});
+```
+
+## Testing commands (undo/redo)
+
+Commands are critical for the undo/redo system:
+
+```typescript
+import { describe, expect, test, beforeEach } from "bun:test";
+import { EditorCore } from "@/core";
+import { AddTrackCommand } from "@/lib/commands/timeline/add-track";
+
+describe("AddTrackCommand", () => {
+  let editor: EditorCore;
+
+  beforeEach(() => {
+    EditorCore.reset();
+    editor = EditorCore.getInstance();
+  });
+
+  test("execute adds track", () => {
+    const command = new AddTrackCommand({ type: "media" });
+    const before = editor.timeline.getTracks().length;
+
+    command.execute();
+
+    const after = editor.timeline.getTracks().length;
+    expect(after).toBe(before + 1);
+  });
+
+  test("undo removes track", () => {
+    const command = new AddTrackCommand({ type: "media" });
+    const before = editor.timeline.getTracks().length;
+
+    command.execute();
+    command.undo();
+
+    const after = editor.timeline.getTracks().length;
+    expect(after).toBe(before);
+  });
+
+  test("redo re-adds track", () => {
+    const command = new AddTrackCommand({ type: "media" });
+
+    command.execute();
+    const afterExecute = editor.timeline.getTracks().length;
+    
+    command.undo();
+    command.execute(); // Redo
+    
+    const afterRedo = editor.timeline.getTracks().length;
+    expect(afterRedo).toBe(afterExecute);
+  });
+});
+```
+
+## Testing React components
+
+<Note>
+Component testing is not yet standardized in OpenCut. We focus primarily on testing logic, utilities, and core functionality.
+</Note>
+
+If you need to test components, you can use React Testing Library:
+
+```typescript
+import { describe, expect, test } from "bun:test";
+import { render, screen } from "@testing-library/react";
+import { MyComponent } from "../MyComponent";
+
+describe("MyComponent", () => {
+  test("renders with correct text", () => {
+    render(<MyComponent title="Hello" />);
+    expect(screen.getByText("Hello")).toBeDefined();
+  });
+});
+```
+
+## Mocking
+
+### Mocking modules
+
+```typescript
+import { describe, expect, test, mock } from "bun:test";
+
+const mockFetch = mock(() => 
+  Promise.resolve({
+    json: () => Promise.resolve({ data: "mocked" }),
+  })
+);
+
+global.fetch = mockFetch;
+
+describe("API calls", () => {
+  test("fetches data", async () => {
+    const result = await fetchData();
+    expect(result.data).toBe("mocked");
+    expect(mockFetch).toHaveBeenCalled();
+  });
+});
+```
+
+### Mocking EditorCore
+
+```typescript
+import { describe, expect, test, mock } from "bun:test";
+import { EditorCore } from "@/core";
+
+describe("component using editor", () => {
+  test("calls timeline method", () => {
+    const editor = EditorCore.getInstance();
+    const mockAddTrack = mock();
+    editor.timeline.addTrack = mockAddTrack;
+
+    // Trigger component action that calls addTrack
+    // ...
+
+    expect(mockAddTrack).toHaveBeenCalled();
+  });
+});
+```
+
+## Test coverage
+
+While we don't require 100% coverage, aim to test:
+
+- **All public APIs** of core modules
+- **All commands** (execute, undo, redo)
+- **All data migrations**
+- **Critical utilities** (ID generation, validation, parsing)
+- **Edge cases** and error conditions
+
+Run coverage reports:
+
+```bash
+bun test --coverage
+```
+
+## When to write tests
+
+Write tests when:
+
+- **Adding new commands** - Always test execute/undo/redo
+- **Adding data migrations** - Critical for data integrity
+- **Fixing bugs** - Prevent regressions
+- **Adding critical utilities** - Parsing, validation, calculations
+- **Changing core functionality** - Timeline, playback, export
+
+You might skip tests for:
+
+- Simple UI components
+- One-off scripts
+- Experimental features
+- Prototype code
+
+## Continuous integration
+
+Tests run automatically on:
+
+- Every pull request
+- Every push to main branch
+- Before deployment
+
+Pull requests must pass all tests before merging.
+
+## Best practices
+
+<AccordionGroup>
+  <Accordion title="Write descriptive test names">
+    Test names should clearly describe what is being tested:
+
+    ```typescript
+    // Good
+    test("throws error when sticker ID is empty string", () => {});
+
+    // Bad
+    test("error test", () => {});
+    ```
+  </Accordion>
+
+  <Accordion title="Test one thing per test">
+    Each test should verify a single behavior:
+
+    ```typescript
+    // Good
+    test("adds track to timeline", () => {});
+    test("removes track from timeline", () => {});
+
+    // Bad
+    test("adds and removes tracks", () => {});
+    ```
+  </Accordion>
+
+  <Accordion title="Use arrange-act-assert pattern">
+    Structure tests with clear sections:
+
+    ```typescript
+    test("calculates total duration", () => {
+      // Arrange
+      const clips = [{ duration: 100 }, { duration: 200 }];
+      
+      // Act
+      const total = calculateTotalDuration(clips);
+      
+      // Assert
+      expect(total).toBe(300);
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Clean up after tests">
+    Reset state between tests:
+
+    ```typescript
+    beforeEach(() => {
+      EditorCore.reset();
+    });
+
+    afterEach(() => {
+      // Clean up any side effects
+    });
+    ```
+  </Accordion>
+
+  <Accordion title="Test error conditions">
+    Don't just test the happy path:
+
+    ```typescript
+    test("throws when input is invalid", () => {
+      expect(() => parseId("")).toThrow();
+      expect(() => parseId(null)).toThrow();
+    });
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Debugging tests
+
+### Add console logs
+
+```typescript
+test("debugging test", () => {
+  console.log("Input:", input);
+  const result = functionToTest(input);
+  console.log("Result:", result);
+  expect(result).toBe(expected);
+});
+```
+
+### Run single test
+
+```bash
+bun test path/to/test.test.ts
+```
+
+### Use Bun's debugger
+
+```bash
+bun --inspect test path/to/test.test.ts
+```
+
+Then attach a debugger (VS Code, Chrome DevTools, etc.).
+
+## Contributing tests
+
+When contributing:
+
+1. Add tests for new functionality
+2. Update tests when changing behavior
+3. Add regression tests when fixing bugs
+4. Ensure all tests pass before submitting PR
+
+<Card title="Contributing Guide" icon="code-pull-request" href="/development/contributing">
+  Learn more about the contribution workflow
+</Card>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Setup" icon="wrench" href="/development/setup">
+    Set up your development environment
+  </Card>
+  <Card title="Architecture" icon="diagram-project" href="/development/architecture">
+    Learn about the system architecture
+  </Card>
+</CardGroup>

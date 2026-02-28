@@ -1,0 +1,265 @@
+---
+title: Keyboard shortcuts
+description: Complete reference of keyboard shortcuts for fast editing in OpenCut
+---
+
+OpenCut provides comprehensive keyboard shortcuts to speed up your editing workflow. All shortcuts can be customized in the settings.
+
+<Info>
+View the shortcuts dialog anytime by clicking the keyboard icon in the editor header or pressing `?`.
+</Info>
+
+## Playback
+
+Control video playback without touching the mouse:
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| `Space` | Play/Pause | Toggle playback on and off |
+| `K` | Play/Pause | Alternative play/pause shortcut |
+| `J` | Seek backward | Jump backward 1 second |
+| `L` | Seek forward | Jump forward 1 second |
+
+Source: `apps/web/src/lib/actions/definitions.ts:20-40`
+
+<Tip>
+The `J`, `K`, `L` shortcuts are borrowed from professional editing software and provide one-handed playback control.
+</Tip>
+
+## Navigation
+
+Move through your timeline with precision:
+
+### Frame stepping
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| `→` | Frame step forward | Move forward one frame |
+| `←` | Frame step backward | Move backward one frame |
+
+Perfect for finding the exact frame to make a cut or adjustment.
+
+### Jumping
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| `Shift + →` | Jump forward | Jump forward 5 seconds |
+| `Shift + ←` | Jump backward | Jump backward 5 seconds |
+
+### Timeline navigation
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| `Home` | Go to start | Jump to the beginning of the timeline |
+| `Enter` | Go to start | Alternative shortcut for timeline start |
+| `End` | Go to end | Jump to the end of the timeline |
+
+Source: `apps/web/src/lib/actions/definitions.ts:41-72`
+
+## Editing
+
+Core editing operations for cutting and manipulating your content:
+
+### Splitting and cutting
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| `S` | Split | Split elements at playhead (keeps both sides) |
+| `Q` | Split left | Split and remove everything before playhead |
+| `W` | Split right | Split and remove everything after playhead |
+
+<Note>
+Split operations work on all selected elements. If nothing is selected, they affect all elements under the playhead.
+</Note>
+
+### Clipboard operations
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| `Ctrl/Cmd + C` | Copy | Copy selected elements to clipboard |
+| `Ctrl/Cmd + V` | Paste | Paste elements at playhead position |
+| `Ctrl/Cmd + D` | Duplicate | Duplicate selected element immediately after original |
+
+### Deleting
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| `Backspace` | Delete selected | Remove selected elements from timeline |
+| `Delete` | Delete selected | Alternative delete shortcut |
+
+### Toggle features
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| `N` | Toggle snapping | Enable/disable snap to playhead and elements |
+
+Source: `apps/web/src/lib/actions/definitions.ts:73-107`
+
+## Selection
+
+Quickly select and manipulate multiple elements:
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| `Ctrl/Cmd + A` | Select all | Select all elements in the timeline |
+| Click + Drag | Box select | Create selection box to select multiple elements |
+| `Ctrl/Cmd + Click` | Add to selection | Add individual elements to current selection |
+
+### Element visibility and audio
+
+These shortcuts work on selected elements:
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| (No default) | Mute/unmute | Toggle mute state for selected elements |
+| (No default) | Show/hide | Toggle visibility for selected elements |
+
+Source: `apps/web/src/lib/actions/definitions.ts:108-125`
+
+<Info>
+You can assign custom shortcuts to element mute/hide actions in the keyboard shortcuts settings.
+</Info>
+
+## Timeline
+
+Manage timeline markers and bookmarks:
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| (No default) | Toggle bookmark | Add/remove bookmark at playhead position |
+
+Source: `apps/web/src/lib/actions/definitions.ts:126-129`
+
+## History
+
+Undo and redo any editing action:
+
+| Shortcut | Action | Description |
+|----------|--------|-------------|
+| `Ctrl/Cmd + Z` | Undo | Undo the last action |
+| `Ctrl/Cmd + Shift + Z` | Redo | Redo the last undone action |
+| `Ctrl/Cmd + Y` | Redo | Alternative redo shortcut |
+
+OpenCut supports unlimited undo/redo for all editing operations.
+
+Source: `apps/web/src/lib/actions/definitions.ts:130-139`
+
+## Shortcut categories
+
+Shortcuts are organized into logical categories:
+
+<AccordionGroup>
+  <Accordion title="Playback">
+    Controls for playing, pausing, and seeking through your timeline.
+    
+    Includes:
+    - Play/Pause toggles
+    - Forward and backward seeking
+    - Stop playback
+  </Accordion>
+
+  <Accordion title="Navigation">
+    Moving the playhead and navigating through time.
+    
+    Includes:
+    - Frame stepping
+    - Jumping by seconds
+    - Go to start/end
+  </Accordion>
+
+  <Accordion title="Editing">
+    Core editing operations for modifying timeline content.
+    
+    Includes:
+    - Split operations
+    - Copy/paste
+    - Delete
+    - Duplicate
+    - Toggle snapping
+  </Accordion>
+
+  <Accordion title="Selection">
+    Selecting and managing multiple elements.
+    
+    Includes:
+    - Select all
+    - Box selection
+    - Multi-select
+    - Element visibility toggles
+  </Accordion>
+
+  <Accordion title="History">
+    Undo and redo operations.
+    
+    Includes:
+    - Undo
+    - Redo (two shortcuts)
+  </Accordion>
+
+  <Accordion title="Timeline">
+    Timeline-specific features.
+    
+    Includes:
+    - Bookmark management
+  </Accordion>
+
+  <Accordion title="Controls">
+    General interface controls.
+    
+    Reserved for future features.
+  </Accordion>
+</AccordionGroup>
+
+Source: `apps/web/src/lib/actions/definitions.ts:3-10`
+
+## Customizing shortcuts
+
+All keyboard shortcuts in OpenCut can be customized to match your preferred workflow:
+
+<Steps>
+  <Step title="Open shortcuts dialog">
+    Click the keyboard icon in the editor header or press `?`.
+  </Step>
+  
+  <Step title="Find the action">
+    Browse or search for the action you want to customize.
+  </Step>
+  
+  <Step title="Assign new shortcut">
+    Click on the current shortcut and press your desired key combination.
+  </Step>
+  
+  <Step title="Save changes">
+    Your custom shortcuts are saved automatically and sync across devices.
+  </Step>
+</Steps>
+
+## Tips for efficient editing
+
+<CardGroup cols={2}>
+  <Card title="Learn the basics first" icon="graduation-cap">
+    Start with play/pause (Space), split (S), and delete (Backspace/Delete). These cover 80% of basic editing.
+  </Card>
+  
+  <Card title="Use J-K-L for review" icon="hand">
+    Keep one hand on J-K-L for quick play/pause/seek while reviewing footage.
+  </Card>
+  
+  <Card title="Frame stepping for precision" icon="crosshairs">
+    Use arrow keys to find exact frames when making precise cuts.
+  </Card>
+  
+  <Card title="Toggle snapping" icon="magnet">
+    Press N to quickly toggle snapping on when you need precision, off when you don't.
+  </Card>
+</CardGroup>
+
+## Shortcut conflicts
+
+If you assign a shortcut that's already in use:
+
+- OpenCut will warn you about the conflict
+- You can choose to override the existing shortcut
+- Or cancel and choose a different key combination
+
+Source: `apps/web/src/lib/actions/index.ts`

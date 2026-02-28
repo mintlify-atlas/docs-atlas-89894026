@@ -1,0 +1,285 @@
+---
+title: Development setup
+description: Set up your local development environment for OpenCut
+---
+
+This guide will help you set up a local development environment for OpenCut.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- [Node.js](https://nodejs.org/en/) (v18 or later)
+- [Bun](https://bun.sh/docs/installation) (recommended package manager)
+- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
+
+<Note>
+Docker is optional but recommended for running the local database and Redis services. If you only want to work on frontend features, you can skip the Docker setup.
+</Note>
+
+## Installation
+
+<Steps>
+  <Step title="Fork and clone the repository">
+    Fork the [OpenCut repository](https://github.com/opencut-app/opencut) to your GitHub account, then clone it locally:
+
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/opencut.git
+    cd opencut
+    ```
+  </Step>
+
+  <Step title="Copy environment variables">
+    Copy the example environment file to create your local configuration:
+
+    <CodeGroup>
+      ```bash Unix/Linux/Mac
+      cp apps/web/.env.example apps/web/.env.local
+      ```
+
+      ```bash Windows Command Prompt
+      copy apps\web\.env.example apps\web\.env.local
+      ```
+
+      ```powershell Windows PowerShell
+      Copy-Item apps/web/.env.example apps/web/.env.local
+      ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Configure environment variables">
+    Open `apps/web/.env.local` and configure the required variables:
+
+    ```bash
+    # Node
+    NODE_ENV=development
+
+    # Public
+    NEXT_PUBLIC_SITE_URL=http://localhost:3000
+    NEXT_PUBLIC_MARBLE_API_URL=https://api.marblecms.com
+
+    # Database (matches docker-compose.yml)
+    DATABASE_URL="postgresql://opencut:opencut@localhost:5432/opencut"
+
+    # Authentication - Generate a secure secret
+    BETTER_AUTH_SECRET="your-generated-secret-here"
+
+    # Redis (matches docker-compose.yml)
+    UPSTASH_REDIS_REST_URL=http://localhost:8079
+    UPSTASH_REDIS_REST_TOKEN=example_token
+    ```
+
+    ### Generate authentication secret
+
+    Generate a secure `BETTER_AUTH_SECRET` using one of these methods:
+
+    <CodeGroup>
+      ```bash Unix/Linux/Mac
+      openssl rand -base64 32
+      ```
+
+      ```powershell Windows PowerShell
+      [System.Web.Security.Membership]::GeneratePassword(32, 0)
+      ```
+
+      ```bash Node.js (cross-platform)
+      node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+      ```
+    </CodeGroup>
+
+    Or use an online generator: [generate-secret.vercel.app/32](https://generate-secret.vercel.app/32)
+
+    <Note>
+    The `.env.example` file has sensible defaults that match the Docker Compose configuration. For basic development, you only need to set `BETTER_AUTH_SECRET`.
+    </Note>
+  </Step>
+
+  <Step title="Start Docker services">
+    Start the PostgreSQL database and Redis services:
+
+    ```bash
+    docker compose up -d db redis serverless-redis-http
+    ```
+
+    This starts:
+    - **PostgreSQL** on port 5432
+    - **Redis** on port 6379
+    - **Serverless Redis HTTP** on port 8079 (Upstash-compatible REST API)
+  </Step>
+
+  <Step title="Install dependencies">
+    Install all project dependencies using your preferred package manager:
+
+    <CodeGroup>
+      ```bash Bun (recommended)
+      bun install
+      ```
+
+      ```bash npm
+      npm install
+      ```
+
+      ```bash pnpm
+      pnpm install
+      ```
+    </CodeGroup>
+
+    <Warning>
+    If you see an error like `Unsupported URL Type "workspace:*"` when using npm, upgrade to npm v9 or later, or use Bun or pnpm instead.
+    </Warning>
+  </Step>
+
+  <Step title="Run database migrations">
+    Apply database migrations to set up the schema:
+
+    <CodeGroup>
+      ```bash Bun
+      cd apps/web
+      bun run db:migrate
+      ```
+
+      ```bash npm
+      cd apps/web
+      npm run db:migrate
+      ```
+
+      ```bash pnpm
+      cd apps/web
+      pnpm run db:migrate
+      ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Start the development server">
+    Start the Next.js development server from the project root:
+
+    <CodeGroup>
+      ```bash Bun
+      bun dev:web
+      ```
+
+      ```bash npm
+      npm run dev:web
+      ```
+
+      ```bash pnpm
+      pnpm run dev:web
+      ```
+    </CodeGroup>
+
+    The application will be available at [http://localhost:3000](http://localhost:3000).
+  </Step>
+</Steps>
+
+## Optional services
+
+The following environment variables are optional and can be configured for additional features:
+
+### Blog integration
+
+```bash
+MARBLE_WORKSPACE_KEY=your_workspace_key_here
+```
+
+Required for blog content powered by [Marble CMS](https://marblecms.com).
+
+### Audio library
+
+```bash
+FREESOUND_CLIENT_ID=your_client_id_here
+FREESOUND_API_KEY=your_api_key_here
+```
+
+Required for audio library integration with Freesound.
+
+### Auto-captions (transcription)
+
+```bash
+CLOUDFLARE_ACCOUNT_ID=your_account_id_here
+R2_ACCESS_KEY_ID=your_access_key_here
+R2_SECRET_ACCESS_KEY=your_secret_key_here
+R2_BUCKET_NAME=opencut-transcription
+MODAL_TRANSCRIPTION_URL=your_modal_url_here
+```
+
+Required for automatic caption generation using Cloudflare R2 and Modal.
+
+## Self-hosting with Docker
+
+To run a complete production build in Docker:
+
+```bash
+docker compose up -d
+```
+
+The application will be available at [http://localhost:3100](http://localhost:3100).
+
+<Note>
+The Docker production build includes all services: database, Redis, and the Next.js application.
+</Note>
+
+## Available scripts
+
+From the project root:
+
+- `bun dev:web` - Start the web development server
+- `bun build:web` - Build the web application for production
+- `bun test` - Run all tests
+- `bun lint:web` - Check for linting issues
+- `bun lint:web:fix` - Fix linting issues automatically
+- `bun format:web` - Format code with Biome
+
+From `apps/web/`:
+
+- `bun run dev` - Start development server with Turbopack
+- `bun run build` - Build for production
+- `bun run lint` - Check linting with Biome
+- `bun run lint:fix` - Fix linting issues
+- `bun run format` - Format code
+- `bun run db:generate` - Generate database migrations
+- `bun run db:migrate` - Run database migrations
+- `bun run db:push:local` - Push schema changes to local database
+- `bun run db:push:prod` - Push schema changes to production
+
+## Troubleshooting
+
+### Docker services not starting
+
+If Docker services fail to start, check that ports 5432, 6379, and 8079 are not already in use:
+
+```bash
+# Check port usage on Unix/Linux/Mac
+lsof -i :5432
+lsof -i :6379
+lsof -i :8079
+
+# Check port usage on Windows
+netstat -ano | findstr :5432
+netstat -ano | findstr :6379
+netstat -ano | findstr :8079
+```
+
+### Database connection errors
+
+Ensure the `DATABASE_URL` in `.env.local` matches the Docker Compose configuration:
+
+```bash
+DATABASE_URL="postgresql://opencut:opencut@localhost:5432/opencut"
+```
+
+### Package manager issues
+
+If you encounter workspace protocol errors with npm, either:
+1. Upgrade to npm v9 or later: `npm install -g npm@latest`
+2. Use Bun or pnpm instead
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture" icon="diagram-project" href="/development/architecture">
+    Learn about OpenCut's system architecture
+  </Card>
+  <Card title="Contributing" icon="code-pull-request" href="/development/contributing">
+    Start contributing to the project
+  </Card>
+</CardGroup>

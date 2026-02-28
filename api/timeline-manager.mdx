@@ -1,0 +1,766 @@
+---
+title: TimelineManager
+description: Manages timeline tracks, elements, and operations
+---
+
+## Overview
+
+The TimelineManager handles all timeline operations including tracks, elements, splitting, trimming, and element manipulation. Access it through `editor.timeline`.
+
+<Note>
+All mutations to the timeline automatically push to the undo/redo history unless `pushHistory: false` is specified.
+</Note>
+
+## Usage
+
+### Adding tracks
+
+```typescript
+// Add a media track
+const trackId = editor.timeline.addTrack({ type: 'media' });
+
+// Add a text track at a specific index
+const textTrackId = editor.timeline.addTrack({ 
+  type: 'text', 
+  index: 0 
+});
+```
+
+### Working with elements
+
+```typescript
+// Insert an element at the playhead
+editor.timeline.insertElement({
+  element: {
+    type: 'video',
+    mediaId: 'media-123',
+    startTime: 0,
+    duration: 5.0,
+    // ... other properties
+  },
+  placement: {
+    type: 'at-time',
+    trackId: 'track-123',
+    time: editor.playback.getCurrentTime()
+  }
+});
+```
+
+### Splitting elements
+
+```typescript
+const rightSideElements = editor.timeline.splitElements({
+  elements: [{ trackId: 'track-1', elementId: 'element-1' }],
+  splitTime: 5.0,
+  retainSide: 'both'
+});
+```
+
+## Track methods
+
+### addTrack()
+
+Adds a new track to the timeline.
+
+```typescript
+addTrack({ type, index }: { 
+  type: TrackType; 
+  index?: number 
+}): string
+```
+
+<ParamField path="type" type="TrackType" required>
+  Type of track: `"media"`, `"text"`, `"audio"`, or `"image"`
+</ParamField>
+
+<ParamField path="index" type="number">
+  Position to insert the track. Defaults to end of track list
+</ParamField>
+
+**Returns**
+
+- `string` - The ID of the newly created track
+
+**Example**
+
+```typescript
+const trackId = editor.timeline.addTrack({ 
+  type: 'media',
+  index: 0 
+});
+```
+
+### removeTrack()
+
+Removes a track from the timeline.
+
+```typescript
+removeTrack({ trackId }: { trackId: string }): void
+```
+
+<ParamField path="trackId" type="string" required>
+  ID of the track to remove
+</ParamField>
+
+**Example**
+
+```typescript
+editor.timeline.removeTrack({ trackId: 'track-123' });
+```
+
+### toggleTrackMute()
+
+Toggles the mute state of a track.
+
+```typescript
+toggleTrackMute({ trackId }: { trackId: string }): void
+```
+
+<ParamField path="trackId" type="string" required>
+  ID of the track to toggle
+</ParamField>
+
+**Example**
+
+```typescript
+editor.timeline.toggleTrackMute({ trackId: 'track-123' });
+```
+
+### toggleTrackVisibility()
+
+Toggles the visibility state of a track.
+
+```typescript
+toggleTrackVisibility({ trackId }: { trackId: string }): void
+```
+
+<ParamField path="trackId" type="string" required>
+  ID of the track to toggle
+</ParamField>
+
+**Example**
+
+```typescript
+editor.timeline.toggleTrackVisibility({ trackId: 'track-123' });
+```
+
+### getTracks()
+
+Returns all tracks in the current scene.
+
+```typescript
+getTracks(): TimelineTrack[]
+```
+
+**Returns**
+
+- `TimelineTrack[]` - Array of timeline tracks
+
+**Example**
+
+```typescript
+const tracks = editor.timeline.getTracks();
+console.log(`Total tracks: ${tracks.length}`);
+```
+
+### getTrackById()
+
+Finds a track by its ID.
+
+```typescript
+getTrackById({ trackId }: { trackId: string }): TimelineTrack | null
+```
+
+<ParamField path="trackId" type="string" required>
+  ID of the track to find
+</ParamField>
+
+**Returns**
+
+- `TimelineTrack | null` - The track, or null if not found
+
+**Example**
+
+```typescript
+const track = editor.timeline.getTrackById({ trackId: 'track-123' });
+if (track) {
+  console.log(`Track has ${track.elements.length} elements`);
+}
+```
+
+## Element methods
+
+### insertElement()
+
+Inserts an element into the timeline.
+
+```typescript
+insertElement({ element, placement }: InsertElementParams): void
+```
+
+<ParamField path="element" type="TimelineElement" required>
+  The element to insert
+</ParamField>
+
+<ParamField path="placement" type="ElementPlacement" required>
+  Where to place the element (at-time, after-element, etc.)
+</ParamField>
+
+**Example**
+
+```typescript
+editor.timeline.insertElement({
+  element: {
+    type: 'video',
+    mediaId: 'media-123',
+    startTime: 0,
+    duration: 5.0
+  },
+  placement: {
+    type: 'at-time',
+    trackId: 'track-123',
+    time: 10.0
+  }
+});
+```
+
+### deleteElements()
+
+Deletes multiple elements from the timeline.
+
+```typescript
+deleteElements({ elements }: {
+  elements: { trackId: string; elementId: string }[]
+}): void
+```
+
+<ParamField path="elements" type="Array<{ trackId: string; elementId: string }>" required>
+  Array of track/element ID pairs to delete
+</ParamField>
+
+**Example**
+
+```typescript
+editor.timeline.deleteElements({
+  elements: [
+    { trackId: 'track-1', elementId: 'element-1' },
+    { trackId: 'track-2', elementId: 'element-2' }
+  ]
+});
+```
+
+### duplicateElements()
+
+Duplicates elements and places them immediately after the originals.
+
+```typescript
+duplicateElements({ elements }: {
+  elements: { trackId: string; elementId: string }[]
+}): { trackId: string; elementId: string }[]
+```
+
+<ParamField path="elements" type="Array<{ trackId: string; elementId: string }>" required>
+  Array of track/element ID pairs to duplicate
+</ParamField>
+
+**Returns**
+
+- `Array<{ trackId: string; elementId: string }>` - The duplicated elements
+
+**Example**
+
+```typescript
+const duplicates = editor.timeline.duplicateElements({
+  elements: [{ trackId: 'track-1', elementId: 'element-1' }]
+});
+```
+
+### updateElements()
+
+Updates properties of multiple elements.
+
+```typescript
+updateElements({
+  updates,
+  pushHistory = true
+}: {
+  updates: Array<{
+    trackId: string;
+    elementId: string;
+    updates: Partial<Record<string, unknown>>;
+  }>;
+  pushHistory?: boolean;
+}): void
+```
+
+<ParamField path="updates" type="Array<ElementUpdate>" required>
+  Array of element updates to apply
+</ParamField>
+
+<ParamField path="pushHistory" type="boolean" default="true">
+  Whether to push to undo/redo history
+</ParamField>
+
+**Example**
+
+```typescript
+editor.timeline.updateElements({
+  updates: [
+    {
+      trackId: 'track-1',
+      elementId: 'element-1',
+      updates: { volume: 0.5, opacity: 0.8 }
+    }
+  ]
+});
+```
+
+### splitElements()
+
+Splits elements at a specific time.
+
+```typescript
+splitElements({
+  elements,
+  splitTime,
+  retainSide = 'both'
+}: {
+  elements: { trackId: string; elementId: string }[];
+  splitTime: number;
+  retainSide?: 'both' | 'left' | 'right';
+}): { trackId: string; elementId: string }[]
+```
+
+<ParamField path="elements" type="Array<{ trackId: string; elementId: string }>" required>
+  Elements to split
+</ParamField>
+
+<ParamField path="splitTime" type="number" required>
+  Time in seconds where the split should occur
+</ParamField>
+
+<ParamField path="retainSide" type="'both' | 'left' | 'right'" default="'both'">
+  Which side(s) of the split to keep
+</ParamField>
+
+**Returns**
+
+- `Array<{ trackId: string; elementId: string }>` - The right-side elements created by the split
+
+**Example**
+
+```typescript
+// Split and keep both sides
+const rightSide = editor.timeline.splitElements({
+  elements: [{ trackId: 'track-1', elementId: 'element-1' }],
+  splitTime: 5.0,
+  retainSide: 'both'
+});
+```
+
+### moveElement()
+
+Moves an element to a different track or time.
+
+```typescript
+moveElement({
+  sourceTrackId,
+  targetTrackId,
+  elementId,
+  newStartTime,
+  createTrack
+}: {
+  sourceTrackId: string;
+  targetTrackId: string;
+  elementId: string;
+  newStartTime: number;
+  createTrack?: { type: TrackType; index: number };
+}): void
+```
+
+<ParamField path="sourceTrackId" type="string" required>
+  ID of the track containing the element
+</ParamField>
+
+<ParamField path="targetTrackId" type="string" required>
+  ID of the destination track
+</ParamField>
+
+<ParamField path="elementId" type="string" required>
+  ID of the element to move
+</ParamField>
+
+<ParamField path="newStartTime" type="number" required>
+  New start time in seconds
+</ParamField>
+
+<ParamField path="createTrack" type="{ type: TrackType; index: number }">
+  Optional: Create a new track if target doesn't exist
+</ParamField>
+
+**Example**
+
+```typescript
+editor.timeline.moveElement({
+  sourceTrackId: 'track-1',
+  targetTrackId: 'track-2',
+  elementId: 'element-1',
+  newStartTime: 10.0
+});
+```
+
+### updateElementTrim()
+
+Updates the trim points of an element.
+
+```typescript
+updateElementTrim({
+  elementId,
+  trimStart,
+  trimEnd,
+  pushHistory = true
+}: {
+  elementId: string;
+  trimStart: number;
+  trimEnd: number;
+  pushHistory?: boolean;
+}): void
+```
+
+<ParamField path="elementId" type="string" required>
+  ID of the element to trim
+</ParamField>
+
+<ParamField path="trimStart" type="number" required>
+  Trim from the start in seconds
+</ParamField>
+
+<ParamField path="trimEnd" type="number" required>
+  Trim from the end in seconds
+</ParamField>
+
+<ParamField path="pushHistory" type="boolean" default="true">
+  Whether to push to undo/redo history
+</ParamField>
+
+**Example**
+
+```typescript
+// Trim 2 seconds from start, 1 second from end
+editor.timeline.updateElementTrim({
+  elementId: 'element-1',
+  trimStart: 2.0,
+  trimEnd: 1.0
+});
+```
+
+### updateElementDuration()
+
+Updates the duration of an element.
+
+```typescript
+updateElementDuration({
+  trackId,
+  elementId,
+  duration,
+  pushHistory = true
+}: {
+  trackId: string;
+  elementId: string;
+  duration: number;
+  pushHistory?: boolean;
+}): void
+```
+
+<ParamField path="trackId" type="string" required>
+  ID of the track containing the element
+</ParamField>
+
+<ParamField path="elementId" type="string" required>
+  ID of the element
+</ParamField>
+
+<ParamField path="duration" type="number" required>
+  New duration in seconds
+</ParamField>
+
+<ParamField path="pushHistory" type="boolean" default="true">
+  Whether to push to undo/redo history
+</ParamField>
+
+**Example**
+
+```typescript
+editor.timeline.updateElementDuration({
+  trackId: 'track-1',
+  elementId: 'element-1',
+  duration: 10.0
+});
+```
+
+### updateElementStartTime()
+
+Updates the start time of multiple elements.
+
+```typescript
+updateElementStartTime({
+  elements,
+  startTime
+}: {
+  elements: { trackId: string; elementId: string }[];
+  startTime: number;
+}): void
+```
+
+<ParamField path="elements" type="Array<{ trackId: string; elementId: string }>" required>
+  Elements to update
+</ParamField>
+
+<ParamField path="startTime" type="number" required>
+  New start time in seconds
+</ParamField>
+
+**Example**
+
+```typescript
+editor.timeline.updateElementStartTime({
+  elements: [{ trackId: 'track-1', elementId: 'element-1' }],
+  startTime: 5.0
+});
+```
+
+### toggleElementsVisibility()
+
+Toggles visibility for multiple elements.
+
+```typescript
+toggleElementsVisibility({ elements }: {
+  elements: { trackId: string; elementId: string }[]
+}): void
+```
+
+<ParamField path="elements" type="Array<{ trackId: string; elementId: string }>" required>
+  Elements to toggle
+</ParamField>
+
+**Example**
+
+```typescript
+editor.timeline.toggleElementsVisibility({
+  elements: [{ trackId: 'track-1', elementId: 'element-1' }]
+});
+```
+
+### toggleElementsMuted()
+
+Toggles muted state for multiple elements.
+
+```typescript
+toggleElementsMuted({ elements }: {
+  elements: { trackId: string; elementId: string }[]
+}): void
+```
+
+<ParamField path="elements" type="Array<{ trackId: string; elementId: string }>" required>
+  Elements to toggle
+</ParamField>
+
+**Example**
+
+```typescript
+editor.timeline.toggleElementsMuted({
+  elements: [{ trackId: 'track-1', elementId: 'element-1' }]
+});
+```
+
+## Clipboard methods
+
+### pasteAtTime()
+
+Pastes clipboard items at a specific time.
+
+```typescript
+pasteAtTime({
+  time,
+  clipboardItems
+}: {
+  time: number;
+  clipboardItems: ClipboardItem[];
+}): { trackId: string; elementId: string }[]
+```
+
+<ParamField path="time" type="number" required>
+  Time in seconds to paste at
+</ParamField>
+
+<ParamField path="clipboardItems" type="ClipboardItem[]" required>
+  Items to paste
+</ParamField>
+
+**Returns**
+
+- `Array<{ trackId: string; elementId: string }>` - The pasted elements
+
+**Example**
+
+```typescript
+const pastedElements = editor.timeline.pasteAtTime({
+  time: 10.0,
+  clipboardItems: copiedItems
+});
+```
+
+## Preview methods
+
+### previewElements()
+
+Previews element updates without committing to history.
+
+```typescript
+previewElements({ updates }: {
+  updates: Array<{
+    trackId: string;
+    elementId: string;
+    updates: Partial<Record<string, unknown>>;
+  }>
+}): void
+```
+
+<ParamField path="updates" type="Array<ElementUpdate>" required>
+  Updates to preview
+</ParamField>
+
+**Example**
+
+```typescript
+editor.timeline.previewElements({
+  updates: [{
+    trackId: 'track-1',
+    elementId: 'element-1',
+    updates: { opacity: 0.5 }
+  }]
+});
+```
+
+### commitPreview()
+
+Commits the current preview to history.
+
+```typescript
+commitPreview(): void
+```
+
+**Example**
+
+```typescript
+editor.timeline.commitPreview();
+```
+
+### discardPreview()
+
+Discards the current preview and restores previous state.
+
+```typescript
+discardPreview(): void
+```
+
+**Example**
+
+```typescript
+editor.timeline.discardPreview();
+```
+
+### isPreviewActive()
+
+Checks if a preview is currently active.
+
+```typescript
+isPreviewActive(): boolean
+```
+
+**Returns**
+
+- `boolean` - True if preview is active
+
+**Example**
+
+```typescript
+if (editor.timeline.isPreviewActive()) {
+  console.log('Preview active');
+}
+```
+
+## Utility methods
+
+### getTotalDuration()
+
+Returns the total duration of the timeline in seconds.
+
+```typescript
+getTotalDuration(): number
+```
+
+**Returns**
+
+- `number` - Total duration in seconds
+
+**Example**
+
+```typescript
+const duration = editor.timeline.getTotalDuration();
+console.log(`Timeline duration: ${duration}s`);
+```
+
+### getElementsWithTracks()
+
+Returns elements with their parent tracks.
+
+```typescript
+getElementsWithTracks({ elements }: {
+  elements: { trackId: string; elementId: string }[]
+}): Array<{ track: TimelineTrack; element: TimelineElement }>
+```
+
+<ParamField path="elements" type="Array<{ trackId: string; elementId: string }>" required>
+  Elements to retrieve
+</ParamField>
+
+**Returns**
+
+- `Array<{ track: TimelineTrack; element: TimelineElement }>` - Elements with their tracks
+
+**Example**
+
+```typescript
+const elementsWithTracks = editor.timeline.getElementsWithTracks({
+  elements: [{ trackId: 'track-1', elementId: 'element-1' }]
+});
+```
+
+### subscribe()
+
+Subscribes to timeline state changes.
+
+```typescript
+subscribe(listener: () => void): () => void
+```
+
+<ParamField path="listener" type="() => void" required>
+  Function called when timeline state changes
+</ParamField>
+
+**Returns**
+
+- `() => void` - Unsubscribe function
+
+**Example**
+
+```typescript
+const unsubscribe = editor.timeline.subscribe(() => {
+  console.log('Timeline changed');
+});
+```
+
+<Note>
+The `useEditor()` hook automatically subscribes to timeline changes. Only use `subscribe()` directly in non-React code.
+</Note>

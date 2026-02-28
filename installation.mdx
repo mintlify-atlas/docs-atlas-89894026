@@ -1,0 +1,575 @@
+---
+title: Installation
+description: Detailed installation instructions for development and self-hosting OpenCut
+---
+
+## Overview
+
+This guide covers two installation scenarios:
+
+1. **Development setup** — For contributing to OpenCut or running it locally
+2. **Self-hosting with Docker** — For running your own production instance
+
+<CardGroup cols={2}>
+  <Card title="Development setup" icon="code" href="#development-setup">
+    Set up a local development environment
+  </Card>
+  <Card title="Self-hosting" icon="server" href="#self-hosting-with-docker">
+    Deploy your own production instance
+  </Card>
+</CardGroup>
+
+## Development setup
+
+### Prerequisites
+
+Before you begin, ensure you have:
+
+<CardGroup cols={2}>
+  <Card title="Bun" icon="sparkles">
+    **Required** — JavaScript runtime (v1.2.18+)
+    
+    [Install Bun](https://bun.sh/docs/installation)
+  </Card>
+  <Card title="Docker" icon="docker">
+    **Optional** — For database and Redis
+    
+    [Install Docker](https://docs.docker.com/get-docker/)
+  </Card>
+  <Card title="Node.js" icon="node-js">
+    **Alternative** — v18 or later if not using Bun
+    
+    [Install Node.js](https://nodejs.org/)
+  </Card>
+  <Card title="Git" icon="git">
+    **Required** — For cloning the repository
+    
+    [Install Git](https://git-scm.com/downloads)
+  </Card>
+</CardGroup>
+
+<Note>
+  Docker is optional but recommended. If you only want to work on frontend features, you can skip the Docker setup.
+</Note>
+
+### Step 1: Clone the repository
+
+Fork and clone the OpenCut repository:
+
+```bash
+# Clone your fork (replace YOUR-USERNAME with your GitHub username)
+git clone https://github.com/YOUR-USERNAME/OpenCut.git
+cd OpenCut
+```
+
+<Tip>
+  **Contributing?** Make sure to fork the repository first so you can submit pull requests later.
+</Tip>
+
+### Step 2: Environment configuration
+
+Copy the example environment file and configure it:
+
+<CodeGroup>
+  ```bash Unix/Linux/Mac
+  cp apps/web/.env.example apps/web/.env.local
+  ```
+
+  ```bash Windows Command Prompt
+  copy apps\web\.env.example apps\web\.env.local
+  ```
+
+  ```bash Windows PowerShell
+  Copy-Item apps/web/.env.example apps/web/.env.local
+  ```
+</CodeGroup>
+
+Edit `apps/web/.env.local` with your configuration:
+
+```bash apps/web/.env.local
+# Node environment
+NODE_ENV=development
+
+# Public URLs
+NEXT_PUBLIC_SITE_URL=http://localhost:3000
+NEXT_PUBLIC_MARBLE_API_URL=https://api.marblecms.com
+
+# Database (matches docker-compose.yml)
+DATABASE_URL="postgresql://opencut:opencut@localhost:5432/opencut"
+
+# Authentication
+BETTER_AUTH_SECRET=your_better_auth_secret
+
+# Redis (matches docker-compose.yml)
+UPSTASH_REDIS_REST_URL=http://localhost:8079
+UPSTASH_REDIS_REST_TOKEN=example_token
+
+# Optional: Marble CMS for blog
+MARBLE_WORKSPACE_KEY=your_workspace_key_here
+
+# Optional: Freesound audio library
+FREESOUND_CLIENT_ID=your_client_id_here
+FREESOUND_API_KEY=your_api_key_here
+
+# Optional: Auto-captions (Cloudflare R2 + Modal)
+CLOUDFLARE_ACCOUNT_ID=your_account_id_here
+R2_ACCESS_KEY_ID=your_access_key_here
+R2_SECRET_ACCESS_KEY=your_secret_key_here
+R2_BUCKET_NAME=opencut-transcription
+MODAL_TRANSCRIPTION_URL=your_modal_url_here
+```
+
+<Accordion title="Generate BETTER_AUTH_SECRET">
+  You need a secure secret for authentication. Generate one using any of these methods:
+
+  <CodeGroup>
+    ```bash Unix/Linux/Mac
+    openssl rand -base64 32
+    ```
+
+    ```bash Node.js (cross-platform)
+    node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
+    ```
+
+    ```powershell Windows PowerShell
+    [System.Web.Security.Membership]::GeneratePassword(32, 0)
+    ```
+  </CodeGroup>
+
+  Or use an online generator: [generate-secret.vercel.app/32](https://generate-secret.vercel.app/32)
+</Accordion>
+
+<Info>
+  The default values in `.env.example` match the Docker Compose configuration and should work out of the box for local development.
+</Info>
+
+### Step 3: Start services
+
+If using Docker, start the database and Redis services:
+
+```bash
+# Start only the required services for development
+docker compose up -d db redis serverless-redis-http
+```
+
+This starts:
+- **PostgreSQL** on `localhost:5432`
+- **Redis** on `localhost:6379`
+- **Serverless Redis HTTP** on `localhost:8079`
+
+<Accordion title="View service status">
+  Check if services are running:
+
+  ```bash
+  docker compose ps
+  ```
+
+  View logs:
+
+  ```bash
+  # All services
+  docker compose logs -f
+
+  # Specific service
+  docker compose logs -f db
+  ```
+
+  Stop services:
+
+  ```bash
+  docker compose down
+  ```
+</Accordion>
+
+### Step 4: Install dependencies
+
+Install project dependencies:
+
+```bash
+bun install
+```
+
+<Warning>
+  If you see `Unsupported URL Type "workspace:*"` with npm, upgrade to npm v9+ or use Bun/pnpm instead.
+</Warning>
+
+### Step 5: Database setup
+
+Run database migrations (only if using Docker):
+
+```bash
+cd apps/web
+bun run db:migrate
+cd ../..
+```
+
+<Accordion title="Database commands">
+  Available database commands:
+
+  ```bash
+  # Generate migration files
+  bun run db:generate
+
+  # Run migrations
+  bun run db:migrate
+
+  # Push schema to local database
+  bun run db:push:local
+
+  # Push schema to production database
+  bun run db:push:prod
+  ```
+</Accordion>
+
+### Step 6: Start development server
+
+Start the Next.js development server:
+
+```bash
+bun dev:web
+```
+
+The application will be available at [http://localhost:3000](http://localhost:3000).
+
+<Check>
+  **Success!** Your development environment is ready. Changes to the code will automatically reload thanks to hot module replacement.
+</Check>
+
+## Self-hosting with Docker
+
+Run your own production instance of OpenCut using Docker Compose.
+
+### Prerequisites
+
+- [Docker](https://docs.docker.com/get-docker/) and [Docker Compose](https://docs.docker.com/compose/install/)
+- A server or VPS with at least 2GB RAM
+- (Optional) A domain name for public access
+
+### Quick deployment
+
+The simplest way to run OpenCut in production:
+
+<Steps>
+  <Step title="Clone the repository">
+    ```bash
+    git clone https://github.com/OpenCut-app/OpenCut.git
+    cd OpenCut
+    ```
+  </Step>
+
+  <Step title="Configure environment">
+    Create a `.env` file in the project root for production configuration:
+
+    ```bash .env
+    # Generate a secure secret
+    BETTER_AUTH_SECRET=your-production-secret-here
+
+    # Optional: Freesound integration
+    FREESOUND_CLIENT_ID=your_client_id
+    FREESOUND_API_KEY=your_api_key
+
+    # Optional: Marble CMS blog
+    MARBLE_WORKSPACE_KEY=your_workspace_key
+
+    # Optional: Auto-captions
+    CLOUDFLARE_ACCOUNT_ID=your_account_id
+    R2_ACCESS_KEY_ID=your_r2_access_key
+    R2_SECRET_ACCESS_KEY=your_r2_secret
+    R2_BUCKET_NAME=opencut-transcription
+    MODAL_TRANSCRIPTION_URL=your_modal_url
+    ```
+
+    <Warning>
+      **Never commit your `.env` file!** It contains sensitive credentials. The file is already in `.gitignore`.
+    </Warning>
+  </Step>
+
+  <Step title="Start all services">
+    ```bash
+    docker compose up -d
+    ```
+
+    This builds and starts:
+    - OpenCut web application
+    - PostgreSQL database
+    - Redis cache
+    - Serverless Redis HTTP adapter
+
+    The app will be available at [http://localhost:3100](http://localhost:3100).
+  </Step>
+</Steps>
+
+### Docker Compose configuration
+
+The `docker-compose.yml` includes all necessary services:
+
+```yaml docker-compose.yml
+services:
+  # PostgreSQL database
+  db:
+    image: postgres:17
+    ports:
+      - "5432:5432"
+    environment:
+      POSTGRES_USER: opencut
+      POSTGRES_PASSWORD: opencut
+      POSTGRES_DB: opencut
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+  # Redis cache
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "6379:6379"
+
+  # Serverless Redis HTTP adapter
+  serverless-redis-http:
+    image: hiett/serverless-redis-http:latest
+    ports:
+      - "8079:80"
+    environment:
+      SRH_TOKEN: example_token
+      SRH_CONNECTION_STRING: "redis://redis:6379"
+
+  # OpenCut web application
+  web:
+    build:
+      context: .
+      dockerfile: ./apps/web/Dockerfile
+    ports:
+      - "3100:3000"
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://opencut:opencut@db:5432/opencut
+      # ... other environment variables
+```
+
+<Accordion title="Customize ports">
+  To change the external port, edit the `ports` mapping in `docker-compose.yml`:
+
+  ```yaml
+  ports:
+    - "8080:3000"  # Change 8080 to your desired port
+  ```
+</Accordion>
+
+### Production considerations
+
+<AccordionGroup>
+  <Accordion title="Reverse proxy setup" icon="server">
+    For production, use a reverse proxy like Nginx or Caddy:
+
+    **Nginx example:**
+    ```nginx
+    server {
+        listen 80;
+        server_name opencut.yourdomain.com;
+
+        location / {
+            proxy_pass http://localhost:3100;
+            proxy_http_version 1.1;
+            proxy_set_header Upgrade $http_upgrade;
+            proxy_set_header Connection 'upgrade';
+            proxy_set_header Host $host;
+            proxy_cache_bypass $http_upgrade;
+        }
+    }
+    ```
+
+    **Caddy example:**
+    ```caddy
+    opencut.yourdomain.com {
+        reverse_proxy localhost:3100
+    }
+    ```
+  </Accordion>
+
+  <Accordion title="SSL/TLS certificates" icon="lock">
+    Use Let's Encrypt for free SSL certificates:
+
+    ```bash
+    # With Caddy (automatic)
+    caddy run
+
+    # With Certbot + Nginx
+    sudo certbot --nginx -d opencut.yourdomain.com
+    ```
+
+    Update `NEXT_PUBLIC_SITE_URL` in your environment:
+    ```bash
+    NEXT_PUBLIC_SITE_URL=https://opencut.yourdomain.com
+    ```
+  </Accordion>
+
+  <Accordion title="Database backups" icon="database">
+    Set up automated PostgreSQL backups:
+
+    ```bash
+    # Manual backup
+    docker compose exec db pg_dump -U opencut opencut > backup.sql
+
+    # Restore from backup
+    docker compose exec -T db psql -U opencut opencut < backup.sql
+    ```
+
+    Consider using automated backup solutions like:
+    - [pgBackRest](https://pgbackrest.org/)
+    - [Barman](https://www.pgbarman.org/)
+    - Cloud provider backup services
+  </Accordion>
+
+  <Accordion title="Monitoring and logs" icon="chart-line">
+    View logs:
+
+    ```bash
+    # All services
+    docker compose logs -f
+
+    # Specific service
+    docker compose logs -f web
+
+    # Last 100 lines
+    docker compose logs --tail=100
+    ```
+
+    Consider adding monitoring:
+    - [Prometheus](https://prometheus.io/) + [Grafana](https://grafana.com/)
+    - [Sentry](https://sentry.io/) for error tracking
+    - [Datadog](https://www.datadoghq.com/) or [New Relic](https://newrelic.com/)
+  </Accordion>
+
+  <Accordion title="Resource limits" icon="gauge">
+    Set resource limits in `docker-compose.yml`:
+
+    ```yaml
+    services:
+      web:
+        deploy:
+          resources:
+            limits:
+              cpus: '2'
+              memory: 2G
+            reservations:
+              cpus: '1'
+              memory: 1G
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Project structure
+
+Understanding the codebase structure:
+
+```
+OpenCut/
+├── apps/
+│   └── web/                 # Main Next.js application
+│       ├── src/
+│       │   ├── app/         # Next.js app router pages
+│       │   ├── components/  # React components
+│       │   ├── core/        # Editor core system
+│       │   ├── hooks/       # Custom React hooks
+│       │   ├── lib/         # Business logic and utilities
+│       │   ├── services/    # External services (renderer, etc.)
+│       │   ├── stores/      # Zustand state management
+│       │   └── types/       # TypeScript type definitions
+│       ├── public/          # Static assets
+│       ├── Dockerfile       # Production Docker image
+│       └── package.json     # Web app dependencies
+├── packages/                # Shared packages
+│   ├── env/                 # Environment configuration
+│   └── ui/                  # Shared UI components
+├── docker-compose.yml       # Docker services configuration
+├── turbo.json              # Turborepo configuration
+└── package.json            # Root workspace configuration
+```
+
+<Info>
+  See [AGENTS.md](https://github.com/OpenCut-app/OpenCut/blob/main/AGENTS.md) in the repository for detailed architecture documentation.
+</Info>
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Port conflicts" icon="triangle-exclamation">
+    If ports are already in use:
+
+    ```bash
+    # Check what's using a port (macOS/Linux)
+    lsof -i :3000
+
+    # Check what's using a port (Windows)
+    netstat -ano | findstr :3000
+
+    # Kill process by PID
+    kill -9 <PID>          # macOS/Linux
+    taskkill /PID <PID> /F # Windows
+    ```
+  </Accordion>
+
+  <Accordion title="Docker issues" icon="docker">
+    Common Docker problems:
+
+    ```bash
+    # Restart Docker Desktop
+    # macOS: Restart from menu bar icon
+    # Windows: Restart from system tray
+
+    # Clear Docker cache
+    docker system prune -a
+
+    # Rebuild containers
+    docker compose down -v
+    docker compose build --no-cache
+    docker compose up -d
+    ```
+  </Accordion>
+
+  <Accordion title="Build errors" icon="hammer">
+    If the build fails:
+
+    ```bash
+    # Clear bun cache
+    rm -rf node_modules
+    rm -rf apps/web/node_modules
+    bun install
+
+    # Clear Next.js cache
+    rm -rf apps/web/.next
+    bun build:web
+    ```
+  </Accordion>
+
+  <Accordion title="Database connection errors" icon="database">
+    Verify database connectivity:
+
+    ```bash
+    # Check if database is running
+    docker compose ps db
+
+    # Test connection
+    docker compose exec db psql -U opencut -d opencut -c "SELECT 1;"
+
+    # Check logs
+    docker compose logs db
+    ```
+  </Accordion>
+</AccordionGroup>
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Contributing" icon="code-branch" href="/development/contributing">
+    Learn how to contribute to OpenCut
+  </Card>
+  <Card title="Architecture" icon="sitemap" href="/development/architecture">
+    Understand the editor architecture
+  </Card>
+  <Card title="Core concepts" icon="book" href="/concepts/editor-core">
+    Learn about the editor core system
+  </Card>
+  <Card title="API reference" icon="code" href="/api/editor-core">
+    Explore the API documentation
+  </Card>
+</CardGroup>

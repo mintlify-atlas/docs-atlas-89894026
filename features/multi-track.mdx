@@ -1,0 +1,284 @@
+---
+title: Multi-track support
+description: Work with multiple video, audio, text, and sticker tracks in OpenCut's timeline editor
+---
+
+OpenCut supports unlimited tracks of different types, allowing you to layer videos, audio, text, and stickers to create professional compositions.
+
+## Track types
+
+OpenCut supports four types of tracks:
+
+<CardGroup cols={2}>
+  <Card title="Video tracks" icon="video">
+    Contains video and image elements. Supports mute and hide controls.
+    
+    Elements include:
+    - Video files (with or without audio)
+    - Image files
+  </Card>
+  
+  <Card title="Audio tracks" icon="volume">
+    Contains audio elements only. Supports mute control.
+    
+    Elements include:
+    - Audio files from uploads
+    - Audio from library
+  </Card>
+  
+  <Card title="Text tracks" icon="text">
+    Contains text elements with customizable styling. Supports hide control.
+    
+    Text elements can be fully customized with fonts, colors, backgrounds, and more.
+  </Card>
+  
+  <Card title="Sticker tracks" icon="sticker">
+    Contains sticker and graphic elements. Supports hide control.
+    
+    Import stickers from the built-in library or upload your own graphics.
+  </Card>
+</CardGroup>
+
+Source: `apps/web/src/types/timeline.ts:20-53`
+
+## Creating tracks
+
+### Automatic track creation
+
+The easiest way to create tracks is by adding content:
+
+<Steps>
+  <Step title="Select content">
+    From the Assets panel, choose a video, audio, text, or sticker element.
+  </Step>
+  
+  <Step title="Drag to timeline">
+    Drag the element to an empty area of the timeline.
+  </Step>
+  
+  <Step title="Drop to create">
+    Drop above or below existing tracks to automatically create a new track of the appropriate type.
+  </Step>
+</Steps>
+
+A visual indicator shows where the new track will be created.
+
+Source: `apps/web/src/hooks/timeline/use-timeline-drag-drop.ts`
+
+### Manual track creation
+
+You can also create empty tracks:
+
+1. Right-click in the track area
+2. Choose "Add Track" from the context menu
+3. Select the track type
+
+Source: `apps/web/src/core/managers/timeline-manager.ts:37-41`
+
+## Track management
+
+### Track controls
+
+Each track has controls displayed in the track label area:
+
+<AccordionGroup>
+  <Accordion title="Mute control (Video & Audio tracks)">
+    Click the volume icon to mute/unmute all audio in the track:
+    - 🔊 Volume icon - Track is audible
+    - 🔇 Muted icon (red) - Track is muted
+    
+    Muting a track affects all elements within it.
+  </Accordion>
+
+  <Accordion title="Hide control (Video, Text & Sticker tracks)">
+    Click the eye icon to show/hide all visual elements in the track:
+    - 👁 Eye icon - Track is visible
+    - 👁‍🗨 Hidden icon (red) - Track is hidden
+    
+    Hidden tracks are not included in the final render.
+  </Accordion>
+
+  <Accordion title="Track type icon">
+    Shows the type of content in the track:
+    - 🎬 Video track
+    - 🔊 Audio track  
+    - 📝 Text track
+    - ⭐ Sticker track
+  </Accordion>
+</AccordionGroup>
+
+Source: `apps/web/src/components/editor/panels/timeline/index.tsx:278-305`
+
+### Reordering tracks
+
+Change the visual stacking order by dragging elements between tracks:
+
+1. Click and hold an element
+2. Drag vertically to another track
+3. Drop to move the element
+
+<Info>
+Video, text, and sticker tracks stack in visual layers. Higher tracks appear on top of lower tracks in the preview.
+</Info>
+
+### Deleting tracks
+
+Remove a track and all its contents:
+
+1. Right-click on the track
+2. Select "Delete track" from the context menu
+3. The track and all its elements are removed
+
+<Warning>
+Deleting a track cannot be undone with Ctrl+Z. Elements in the track are permanently deleted.
+</Warning>
+
+Source: `apps/web/src/core/managers/timeline-manager.ts:44-46`
+
+## Track context menu
+
+Right-click on any track to access these options:
+
+| Action | Description |
+|--------|-------------|
+| **Paste elements** | Paste copied elements to this track at the playhead position |
+| **Mute track** | Toggle mute state for audio tracks |
+| **Hide track** | Toggle visibility for video/text/sticker tracks |
+| **Delete track** | Remove the track and all its elements |
+
+Source: `apps/web/src/components/editor/panels/timeline/index.tsx:459-511`
+
+## Working with elements
+
+### Element properties by track type
+
+<Tabs>
+  <Tab title="Video elements">
+    Video and image elements support:
+    
+    - **Duration** - Length of the element in the timeline
+    - **Start time** - Position in the timeline
+    - **Trim start/end** - In and out points for the source media
+    - **Transform** - Position, scale, rotation
+    - **Opacity** - Transparency level (0-100%)
+    - **Blend mode** - Compositing mode
+    - **Muted** - Disable audio (video only)
+    - **Hidden** - Exclude from render
+    
+    Source: `apps/web/src/types/timeline.ts:85-102`
+  </Tab>
+  
+  <Tab title="Audio elements">
+    Audio elements support:
+    
+    - **Duration** - Length of the element in the timeline
+    - **Start time** - Position in the timeline
+    - **Trim start/end** - In and out points for the source audio
+    - **Volume** - Audio level (0-200%)
+    - **Muted** - Disable audio output
+    - **Audio buffer** - Waveform data for visualization
+    
+    Source: `apps/web/src/types/timeline.ts:57-74`
+  </Tab>
+  
+  <Tab title="Text elements">
+    Text elements support:
+    
+    - **Duration** - Length of the element in the timeline
+    - **Start time** - Position in the timeline  
+    - **Content** - The text string
+    - **Font family** - Google Fonts or system fonts
+    - **Font size** - Text size in pixels
+    - **Font weight** - Normal or bold
+    - **Font style** - Normal or italic
+    - **Text decoration** - None, underline, or strikethrough
+    - **Color** - Text color
+    - **Text align** - Left, center, or right
+    - **Background** - Color, padding, corner radius
+    - **Letter spacing** - Space between characters
+    - **Line height** - Space between lines
+    - **Transform** - Position, scale, rotation
+    - **Opacity** - Transparency level (0-100%)
+    - **Blend mode** - Compositing mode
+    - **Hidden** - Exclude from render
+    
+    Source: `apps/web/src/types/timeline.ts:104-128`
+  </Tab>
+  
+  <Tab title="Sticker elements">
+    Sticker elements support:
+    
+    - **Duration** - Length of the element in the timeline
+    - **Start time** - Position in the timeline
+    - **Sticker ID** - Reference to the sticker asset
+    - **Transform** - Position, scale, rotation
+    - **Opacity** - Transparency level (0-100%)
+    - **Blend mode** - Compositing mode
+    - **Hidden** - Exclude from render
+    
+    Source: `apps/web/src/types/timeline.ts:130-137`
+  </Tab>
+</Tabs>
+
+### Element visibility and audio
+
+Control individual elements within tracks:
+
+- **Mute element** - Select element(s) and use the keyboard shortcut or properties panel
+- **Hide element** - Select element(s) and use the keyboard shortcut or properties panel
+
+These controls work independently from track-level mute/hide settings.
+
+Source: `apps/web/src/core/managers/timeline-manager.ts:283-300`
+
+## Track rendering order
+
+### Visual layering
+
+For video, text, and sticker tracks, the stacking order determines what appears on top:
+
+- **Top tracks** render on top of lower tracks
+- Elements with higher **opacity** are more visible
+- **Blend modes** affect how layers composite together
+
+Source: `apps/web/src/services/renderer/scene-builder.ts`
+
+### Audio mixing
+
+All audio tracks and video elements with audio are mixed together:
+
+- Audio plays simultaneously from all unmuted tracks
+- Individual element **volume** controls affect the mix
+- Track-level **mute** disables all audio in that track
+
+Source: `apps/web/src/lib/media/audio.ts`
+
+## Main track
+
+Every scene has one **main video track**. This track:
+
+- Determines the project's base dimensions
+- Appears with a red indicator in development mode
+- Cannot be deleted (must have at least one video track)
+
+Source: `apps/web/src/lib/timeline/index.ts`
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Organize by content type" icon="layer-group">
+    Keep similar content on dedicated tracks (e.g., all background music on one audio track, all titles on one text track).
+  </Card>
+  
+  <Card title="Use track mute/hide" icon="eye-slash">
+    Quickly toggle entire tracks on/off when working on specific parts of your edit.
+  </Card>
+  
+  <Card title="Layer strategically" icon="layer-plus">
+    Place foreground elements on higher tracks and backgrounds on lower tracks for easier management.
+  </Card>
+  
+  <Card title="Test audio mix" icon="volume-up">
+    Use track and element mute controls to isolate and balance different audio sources.
+  </Card>
+</CardGroup>

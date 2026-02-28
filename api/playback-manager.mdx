@@ -1,0 +1,356 @@
+---
+title: PlaybackManager
+description: Controls video playback, seeking, and volume
+---
+
+## Overview
+
+The PlaybackManager controls video playback state, seeking, volume, and scrubbing. Access it through `editor.playback`.
+
+## Usage
+
+### Basic playback control
+
+```tsx
+import { useEditor } from '@/hooks/use-editor';
+
+function PlaybackControls() {
+  const editor = useEditor();
+  const isPlaying = editor.playback.getIsPlaying();
+
+  return (
+    <button onClick={() => editor.playback.toggle()}>
+      {isPlaying ? 'Pause' : 'Play'}
+    </button>
+  );
+}
+```
+
+### Seeking to a specific time
+
+```typescript
+// Seek to 5 seconds
+editor.playback.seek({ time: 5.0 });
+```
+
+### Volume control
+
+```typescript
+// Set volume to 50%
+editor.playback.setVolume({ volume: 0.5 });
+
+// Mute audio
+editor.playback.mute();
+
+// Unmute audio
+editor.playback.unmute();
+```
+
+## Methods
+
+### play()
+
+Starts video playback. If playback has reached the end, it automatically seeks to the beginning.
+
+```typescript
+play(): void
+```
+
+**Example**
+
+```typescript
+editor.playback.play();
+```
+
+### pause()
+
+Pauses video playback.
+
+```typescript
+pause(): void
+```
+
+**Example**
+
+```typescript
+editor.playback.pause();
+```
+
+### toggle()
+
+Toggles between play and pause states.
+
+```typescript
+toggle(): void
+```
+
+**Example**
+
+```typescript
+editor.playback.toggle();
+```
+
+### seek()
+
+Seeks to a specific time in seconds. The time is automatically clamped between 0 and the total duration.
+
+```typescript
+seek({ time }: { time: number }): void
+```
+
+<ParamField path="time" type="number" required>
+  The time to seek to in seconds
+</ParamField>
+
+**Example**
+
+```typescript
+// Seek to 10 seconds
+editor.playback.seek({ time: 10.0 });
+
+// Seek to beginning
+editor.playback.seek({ time: 0 });
+```
+
+<Note>
+Seeking dispatches a `playback-seek` custom event on the window object.
+</Note>
+
+### setVolume()
+
+Sets the playback volume. Automatically unmutes if volume is greater than 0.
+
+```typescript
+setVolume({ volume }: { volume: number }): void
+```
+
+<ParamField path="volume" type="number" required>
+  Volume level from 0.0 (silent) to 1.0 (full volume)
+</ParamField>
+
+**Example**
+
+```typescript
+// Set to 75% volume
+editor.playback.setVolume({ volume: 0.75 });
+
+// Mute by setting volume to 0
+editor.playback.setVolume({ volume: 0 });
+```
+
+### mute()
+
+Mutes audio playback while preserving the previous volume level.
+
+```typescript
+mute(): void
+```
+
+**Example**
+
+```typescript
+editor.playback.mute();
+```
+
+### unmute()
+
+Restores audio to the previous volume level before muting.
+
+```typescript
+unmute(): void
+```
+
+**Example**
+
+```typescript
+editor.playback.unmute();
+```
+
+### toggleMute()
+
+Toggles between muted and unmuted states.
+
+```typescript
+toggleMute(): void
+```
+
+**Example**
+
+```typescript
+editor.playback.toggleMute();
+```
+
+### setScrubbing()
+
+Sets the scrubbing state. Used to indicate when the user is dragging the playhead.
+
+```typescript
+setScrubbing({ isScrubbing }: { isScrubbing: boolean }): void
+```
+
+<ParamField path="isScrubbing" type="boolean" required>
+  Whether the user is currently scrubbing
+</ParamField>
+
+**Example**
+
+```typescript
+// Start scrubbing
+editor.playback.setScrubbing({ isScrubbing: true });
+
+// End scrubbing
+editor.playback.setScrubbing({ isScrubbing: false });
+```
+
+### getIsPlaying()
+
+Returns whether video is currently playing.
+
+```typescript
+getIsPlaying(): boolean
+```
+
+**Returns**
+
+- `boolean` - True if video is playing
+
+**Example**
+
+```typescript
+if (editor.playback.getIsPlaying()) {
+  console.log('Video is playing');
+}
+```
+
+### getCurrentTime()
+
+Returns the current playback time in seconds.
+
+```typescript
+getCurrentTime(): number
+```
+
+**Returns**
+
+- `number` - Current time in seconds
+
+**Example**
+
+```typescript
+const currentTime = editor.playback.getCurrentTime();
+console.log(`Current time: ${currentTime}s`);
+```
+
+### getVolume()
+
+Returns the current volume level.
+
+```typescript
+getVolume(): number
+```
+
+**Returns**
+
+- `number` - Volume level from 0.0 to 1.0
+
+**Example**
+
+```typescript
+const volume = editor.playback.getVolume();
+console.log(`Volume: ${volume * 100}%`);
+```
+
+### isMuted()
+
+Returns whether audio is currently muted.
+
+```typescript
+isMuted(): boolean
+```
+
+**Returns**
+
+- `boolean` - True if audio is muted
+
+**Example**
+
+```typescript
+if (editor.playback.isMuted()) {
+  console.log('Audio is muted');
+}
+```
+
+### getIsScrubbing()
+
+Returns whether the user is currently scrubbing.
+
+```typescript
+getIsScrubbing(): boolean
+```
+
+**Returns**
+
+- `boolean` - True if scrubbing
+
+**Example**
+
+```typescript
+if (editor.playback.getIsScrubbing()) {
+  console.log('User is scrubbing');
+}
+```
+
+### subscribe()
+
+Subscribes to playback state changes.
+
+```typescript
+subscribe(listener: () => void): () => void
+```
+
+<ParamField path="listener" type="() => void" required>
+  Function called when playback state changes
+</ParamField>
+
+**Returns**
+
+- `() => void` - Unsubscribe function
+
+**Example**
+
+```typescript
+const unsubscribe = editor.playback.subscribe(() => {
+  console.log('Playback state changed');
+});
+
+// Later: cleanup
+unsubscribe();
+```
+
+<Note>
+The `useEditor()` hook automatically subscribes to all manager changes. Only use `subscribe()` directly in non-React code.
+</Note>
+
+## Events
+
+The PlaybackManager dispatches custom events on the window object:
+
+### playback-seek
+
+Dispatched when seeking to a new time.
+
+```typescript
+window.addEventListener('playback-seek', (event) => {
+  console.log('Seeked to:', event.detail.time);
+});
+```
+
+### playback-update
+
+Dispatched on each frame during playback.
+
+```typescript
+window.addEventListener('playback-update', (event) => {
+  console.log('Current time:', event.detail.time);
+});
+```

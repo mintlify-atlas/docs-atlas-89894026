@@ -1,0 +1,315 @@
+---
+title: Commands
+description: Command pattern and Command base class for undo/redo operations
+---
+
+Commands implement the Command pattern to provide undo/redo functionality in OpenCut. Each command encapsulates a single operation with the ability to execute, undo, and redo.
+
+## Overview
+
+Commands handle undo/redo by saving state before making changes. They live in `@/lib/commands/` organized by domain:
+
+- `timeline/` - Timeline operations (split, delete, move elements)
+- `media/` - Media operations (add/remove assets)
+- `scene/` - Scene operations (create, delete, bookmarks)
+- `project/` - Project operations (update settings)
+
+Actions and commands work together: **actions** are "what triggered this", **commands** are "how to do it (and undo it)".
+
+## Command base class
+
+All commands extend the `Command` base class from `@/lib/commands/base-command`.
+
+```typescript
+export abstract class Command {
+  abstract execute(): void;
+  
+  undo(): void {
+    throw new Error("Undo not implemented for this command");
+  }
+  
+  redo(): void {
+    this.execute();
+  }
+}
+```
+
+### execute()
+
+Performs the operation. Should save the current state before making changes to enable undo.
+
+```typescript
+execute(): void {
+  const editor = EditorCore.getInstance();
+  // Save current state
+  this.savedState = editor.timeline.getTracks();
+  
+  // Perform the operation
+  // ...
+}
+```
+
+### undo()
+
+Reverts the operation by restoring saved state.
+
+```typescript
+undo(): void {
+  if (this.savedState) {
+    const editor = EditorCore.getInstance();
+    editor.timeline.updateTracks(this.savedState);
+  }
+}
+```
+
+### redo()
+
+Re-applies the operation. Default implementation calls `execute()` again. Override if you need custom redo behavior.
+
+```typescript
+redo(): void {
+  this.execute(); // Default: re-run execute
+}
+```
+
+## Creating a command
+
+Here's a complete example of a command that deletes elements:
+
+```typescript
+import { Command } from "@/lib/commands/base-command";
+import type { TimelineTrack } from "@/types/timeline";
+import { EditorCore } from "@/core";
+import { isMainTrack } from "@/lib/timeline";
+
+export class DeleteElementsCommand extends Command {
+  private savedState: TimelineTrack[] | null = null;
+
+  constructor(private elements: { trackId: string; elementId: string }[]) {
+    super();
+  }
+
+  execute(): void {
+    const editor = EditorCore.getInstance();
+    // Save current state before making changes
+    this.savedState = editor.timeline.getTracks();
+
+    // Perform the deletion
+    const updatedTracks = this.savedState
+      .map((track) => {
+        const hasElementsToDelete = this.elements.some(
+          (el) => el.trackId === track.id,
+        );
+
+        if (!hasElementsToDelete) {
+          return track;
+        }
+
+        return {
+          ...track,
+          elements: track.elements.filter(
+            (element) =>
+              !this.elements.some(
+                (el) => el.trackId === track.id && el.elementId === element.id,
+              ),
+          ),
+        };
+      })
+      .filter((track) => track.elements.length > 0 || isMainTrack(track));
+
+    editor.timeline.updateTracks(updatedTracks);
+  }
+
+  undo(): void {
+    if (this.savedState) {
+      const editor = EditorCore.getInstance();
+      editor.timeline.updateTracks(this.savedState);
+    }
+  }
+}
+```
+
+### Usage
+
+```typescript
+import { DeleteElementsCommand } from '@/lib/commands/timeline/element';
+import { EditorCore } from '@/core';
+
+const editor = EditorCore.getInstance();
+
+// Create and execute command
+const command = new DeleteElementsCommand([
+  { trackId: "track-1", elementId: "element-1" },
+  { trackId: "track-2", elementId: "element-2" },
+]);
+
+editor.commands.execute({ command });
+```
+
+The command is automatically added to the history stack. Users can then undo/redo using `Ctrl+Z` / `Ctrl+Shift+Z`.
+
+## BatchCommand
+
+The `BatchCommand` class allows executing multiple commands as a single undoable operation.
+
+```typescript
+import { BatchCommand } from '@/lib/commands';
+
+const batch = new BatchCommand([
+  new DeleteElementsCommand([...]),
+  new AddTrackCommand('media'),
+  new InsertElementCommand(...),
+]);
+
+editor.commands.execute({ command: batch });
+```
+
+### How it works
+
+- **execute()**: Executes all commands in order
+- **undo()**: Undoes all commands in reverse order
+- **redo()**: Re-executes all commands in order
+
+```typescript
+export class BatchCommand extends Command {
+  constructor(private commands: Command[]) {
+    super();
+  }
+
+  execute(): void {
+    for (const command of this.commands) {
+      command.execute();
+    }
+  }
+
+  undo(): void {
+    for (const command of [...this.commands].reverse()) {
+      command.undo();
+    }
+  }
+
+  redo(): void {
+    for (const command of this.commands) {
+      command.execute();
+    }
+  }
+}
+```
+
+## Command examples
+
+### SplitElementsCommand
+
+Splits timeline elements at a specific time:
+
+```typescript
+import { SplitElementsCommand } from '@/lib/commands/timeline/element';
+
+const command = new SplitElementsCommand(
+  [
+    { trackId: "track-1", elementId: "element-1" },
+  ],
+  5.0, // splitTime in seconds
+  "both", // retainSide: "both" | "left" | "right"
+);
+
+editor.commands.execute({ command });
+
+// Get IDs of newly created right-side elements
+const rightElements = command.getRightSideElements();
+```
+
+### AddTrackCommand
+
+Adds a new track to the timeline:
+
+```typescript
+import { AddTrackCommand } from '@/lib/commands/timeline/track';
+
+const command = new AddTrackCommand(
+  'media', // type: 'media' | 'audio' | 'subtitle'
+  0, // optional index (defaults to appropriate position)
+);
+
+editor.commands.execute({ command });
+
+// Get the ID of the newly created track
+const trackId = command.getTrackId();
+```
+
+## Best practices
+
+### Always save state in execute()
+
+```typescript
+// Good
+execute(): void {
+  this.savedState = editor.timeline.getTracks();
+  // ... perform changes
+}
+
+// Bad - can't undo without saved state
+execute(): void {
+  // ... perform changes (no saved state)
+}
+```
+
+### Use immutable updates
+
+```typescript
+// Good - creates new objects
+const updatedTracks = this.savedState.map((track) => ({
+  ...track,
+  elements: [...track.elements],
+}));
+
+// Bad - mutates existing state
+this.savedState.forEach((track) => {
+  track.elements.push(newElement);
+});
+```
+
+### Store constructor parameters
+
+Commands need their parameters for potential re-execution:
+
+```typescript
+// Good
+class MyCommand extends Command {
+  constructor(private elementId: string) {
+    super();
+  }
+  
+  execute(): void {
+    // Can access this.elementId
+  }
+}
+
+// Bad - parameters not accessible in execute
+class MyCommand extends Command {
+  execute(): void {
+    // No access to constructor parameters
+  }
+}
+```
+
+### Check state before undo
+
+```typescript
+// Good
+undo(): void {
+  if (this.savedState) {
+    editor.timeline.updateTracks(this.savedState);
+  }
+}
+
+// Bad - may crash if execute() wasn't called
+undo(): void {
+  editor.timeline.updateTracks(this.savedState); // savedState might be null
+}
+```
+
+## Related
+
+- [Actions](/api/actions) - Action system for user operations
+- [CommandManager](/api/command-manager) - Managing command history and undo/redo

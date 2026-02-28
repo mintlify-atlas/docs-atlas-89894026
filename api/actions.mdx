@@ -1,0 +1,221 @@
+---
+title: Actions
+description: Actions system and invokeAction() for user-triggered operations
+---
+
+Actions are the trigger layer for user-initiated operations in OpenCut. They provide a unified interface for keyboard shortcuts, UI interactions, and programmatic invocations.
+
+## Overview
+
+The actions system separates "what to do" (the action) from "how to trigger it" (shortcuts, buttons, menu items). All action definitions live in a single source of truth: `@/lib/actions/definitions.ts`.
+
+### When to use actions
+
+Use `invokeAction()` for user-triggered operations in components:
+
+```typescript
+import { invokeAction } from '@/lib/actions';
+
+// Good - uses action system with UX feedback
+const handleSplit = () => invokeAction("split");
+
+// Avoid - bypasses UX layer (toasts, validation feedback)
+const handleSplit = () => editor.timeline.splitElements({ ... });
+```
+
+Direct `editor.xxx()` calls are for internal use (commands, tests, complex multi-step operations).
+
+## invokeAction()
+
+Invokes an action by name, optionally passing arguments and trigger information.
+
+<ParamField path="action" type="TAction" required>
+  The action name to invoke (e.g., `"toggle-play"`, `"split"`, `"undo"`)
+</ParamField>
+
+<ParamField path="args" type="TActionArgsMap[A]">
+  Arguments for actions that accept parameters. Only required for actions with args:
+  - `seek-forward` / `seek-backward`: `{ seconds: number }`
+  - `jump-forward` / `jump-backward`: `{ seconds: number }`
+</ParamField>
+
+<ParamField path="trigger" type="TInvocationTrigger">
+  How the action was triggered. Values: `"keypress"` or `"mouseclick"`. Used for analytics and conditional behavior.
+</ParamField>
+
+### Examples
+
+```typescript
+import { invokeAction } from '@/lib/actions';
+
+// Simple action without arguments
+invokeAction("toggle-play");
+
+// Action with arguments
+invokeAction("seek-forward", { seconds: 5 });
+
+// Action with trigger information
+invokeAction("split", undefined, "keypress");
+```
+
+## Action handlers
+
+Actions are handled using the `useActionHandler` hook in React components. This connects action invocations to their implementations.
+
+```typescript
+import { useActionHandler } from '@/hooks/actions/use-action-handler';
+import { useEditor } from '@/hooks/use-editor';
+
+function MyComponent() {
+  const editor = useEditor();
+
+  useActionHandler(
+    "toggle-play",
+    () => {
+      editor.playback.toggle();
+    },
+    undefined, // isActive: when to bind this handler
+  );
+}
+```
+
+### useActionHandler
+
+Registers a handler for a specific action.
+
+<ParamField path="action" type="TAction" required>
+  The action name to handle
+</ParamField>
+
+<ParamField path="handler" type="TActionFunc<A>" required>
+  Function to execute when action is invoked. Receives action arguments and optional trigger.
+</ParamField>
+
+<ParamField path="isActive" type="boolean | MutableRefObject<boolean> | undefined" required>
+  Controls when the handler is active:
+  - `undefined`: Always active
+  - `boolean`: Static active state
+  - `MutableRefObject<boolean>`: Dynamic active state (useful for conditional handlers)
+</ParamField>
+
+## Available actions
+
+All actions are defined in the `ACTIONS` constant in `@/lib/actions/definitions.ts`.
+
+### Playback
+
+| Action | Description | Default Shortcuts | Arguments |
+| --- | --- | --- | --- |
+| `toggle-play` | Play/Pause | `space`, `k` | - |
+| `stop-playback` | Stop playback | - | - |
+| `seek-forward` | Seek forward 1 second | `l` | `{ seconds?: number }` |
+| `seek-backward` | Seek backward 1 second | `j` | `{ seconds?: number }` |
+
+### Navigation
+
+| Action | Description | Default Shortcuts | Arguments |
+| --- | --- | --- | --- |
+| `frame-step-forward` | Frame step forward | `right` | - |
+| `frame-step-backward` | Frame step backward | `left` | - |
+| `jump-forward` | Jump forward 5 seconds | `shift+right` | `{ seconds?: number }` |
+| `jump-backward` | Jump backward 5 seconds | `shift+left` | `{ seconds?: number }` |
+| `goto-start` | Go to timeline start | `home`, `enter` | - |
+| `goto-end` | Go to timeline end | `end` | - |
+
+### Editing
+
+| Action | Description | Default Shortcuts | Arguments |
+| --- | --- | --- | --- |
+| `split` | Split elements at playhead | `s` | - |
+| `split-left` | Split and remove left | `q` | - |
+| `split-right` | Split and remove right | `w` | - |
+| `delete-selected` | Delete selected elements | `backspace`, `delete` | - |
+| `copy-selected` | Copy selected elements | `ctrl+c` | - |
+| `paste-copied` | Paste elements at playhead | `ctrl+v` | - |
+| `toggle-snapping` | Toggle snapping | `n` | - |
+
+### Selection
+
+| Action | Description | Default Shortcuts | Arguments |
+| --- | --- | --- | --- |
+| `select-all` | Select all elements | `ctrl+a` | - |
+| `duplicate-selected` | Duplicate selected element | `ctrl+d` | - |
+| `toggle-elements-muted-selected` | Mute/unmute selected elements | - | - |
+| `toggle-elements-visibility-selected` | Show/hide selected elements | - | - |
+
+### History
+
+| Action | Description | Default Shortcuts | Arguments |
+| --- | --- | --- | --- |
+| `undo` | Undo | `ctrl+z` | - |
+| `redo` | Redo | `ctrl+shift+z`, `ctrl+y` | - |
+
+### Timeline
+
+| Action | Description | Default Shortcuts | Arguments |
+| --- | --- | --- | --- |
+| `toggle-bookmark` | Toggle bookmark at playhead | - | - |
+
+## Action definition
+
+Each action is defined with the following properties:
+
+<ParamField path="description" type="string" required>
+  Human-readable description of what the action does
+</ParamField>
+
+<ParamField path="category" type="TActionCategory" required>
+  Category for grouping actions. Values: `"playback"`, `"navigation"`, `"editing"`, `"selection"`, `"history"`, `"timeline"`, `"controls"`
+</ParamField>
+
+<ParamField path="defaultShortcuts" type="ShortcutKey[]">
+  Array of default keyboard shortcuts for this action
+</ParamField>
+
+<ParamField path="args" type="Record<string, unknown>">
+  Schema defining the arguments this action accepts
+</ParamField>
+
+## Adding new actions
+
+To add a new action:
+
+1. **Define the action** in `@/lib/actions/definitions.ts`:
+
+```typescript
+export const ACTIONS = {
+  "my-action": {
+    description: "What the action does",
+    category: "editing",
+    defaultShortcuts: ["ctrl+m"],
+  },
+  // ...
+};
+```
+
+2. **Add the handler** in `@/hooks/use-editor-actions.ts` (or your component):
+
+```typescript
+useActionHandler(
+  "my-action",
+  () => {
+    // Implementation
+    editor.timeline.doSomething();
+  },
+  undefined,
+);
+```
+
+3. **If the action takes arguments**, add type definitions in `@/lib/actions/types.ts`:
+
+```typescript
+export type TActionArgsMap = {
+  "my-action": { value: number };
+  // ...
+};
+```
+
+## Related
+
+- [Commands](/api/commands) - Command pattern for undo/redo
+- [CommandManager](/api/command-manager) - Managing command history

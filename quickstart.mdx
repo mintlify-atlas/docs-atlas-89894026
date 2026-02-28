@@ -1,80 +1,187 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quick start
+description: Get OpenCut running locally in under 5 minutes
 ---
 
 ## Get started in three steps
 
-Get your documentation site running locally and make your first customization.
+This guide will get you from zero to editing your first video in OpenCut as quickly as possible.
 
-### Step 1: Set up your local environment
+<Steps>
+  <Step title="Install prerequisites">
+    Install Bun, the JavaScript runtime and package manager used by OpenCut:
+
+    <CodeGroup>
+      ```bash macOS/Linux
+      curl -fsSL https://bun.sh/install | bash
+      ```
+
+      ```bash Windows
+      powershell -c "irm bun.sh/install.ps1 | iex"
+      ```
+    </CodeGroup>
+
+    <Tip>
+      Bun is like npm or yarn but faster. If you already have Node.js installed, you can also use npm, but Bun is recommended for the best experience.
+    </Tip>
+
+    <Accordion title="Optional: Install Docker for full features">
+      Docker is optional but recommended if you want authentication and project saving features. For frontend-only editing features, you can skip Docker.
+
+      - **Docker Desktop**: [Download here](https://docs.docker.com/get-docker/)
+      - **Docker Compose**: Included with Docker Desktop
+
+      If you skip Docker, you can still use OpenCut for editing, but user accounts and cloud sync won't work.
+    </Accordion>
+  </Step>
+
+  <Step title="Clone and setup">
+    Clone the repository and install dependencies:
+
+    ```bash
+    # Clone the repository
+    git clone https://github.com/OpenCut-app/OpenCut.git
+    cd OpenCut
+
+    # Copy environment file
+    cp apps/web/.env.example apps/web/.env.local
+
+    # Install dependencies
+    bun install
+    ```
+
+    <Accordion title="With Docker: Start services">
+      If you installed Docker, start the database and Redis:
+
+      ```bash
+      docker compose up -d db redis serverless-redis-http
+      ```
+
+      This starts:
+      - **PostgreSQL** database on port 5432
+      - **Redis** cache on port 6379
+      - **Serverless Redis HTTP** adapter on port 8079
+
+      <Info>
+        The `.env.example` file has sensible defaults that match the Docker Compose config. It should work out of the box.
+      </Info>
+    </Accordion>
+  </Step>
+
+  <Step title="Start editing">
+    Start the development server:
+
+    ```bash
+    bun dev:web
+    ```
+
+    Open [http://localhost:3000](http://localhost:3000) in your browser and start editing!
+
+    <Check>
+      **You're all set!** OpenCut is now running locally. Try importing a video and exploring the timeline editor.
+    </Check>
+  </Step>
+</Steps>
+
+## Verify installation
+
+Once OpenCut is running, you should see:
+
+- The OpenCut homepage at `http://localhost:3000`
+- An empty project timeline ready for editing
+- The ability to import media files
+
+If you encounter issues:
 
 <AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
+  <Accordion title="Port 3000 already in use">
+    If port 3000 is already in use, you can change it:
+
+    ```bash
+    PORT=3001 bun dev:web
+    ```
+
+    Or kill the process using port 3000:
+
+    ```bash
+    # macOS/Linux
+    lsof -ti:3000 | xargs kill
+
+    # Windows
+    netstat -ano | findstr :3000
+    taskkill /PID <PID> /F
+    ```
   </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
+
+  <Accordion title="Bun command not found">
+    Make sure Bun is in your PATH. After installation, restart your terminal or run:
+
+    ```bash
+    # macOS/Linux
+    source ~/.bashrc  # or ~/.zshrc
+
+    # Windows
+    # Restart PowerShell
+    ```
+  </Accordion>
+
+  <Accordion title="Database connection errors">
+    If you're seeing database errors:
+
+    1. Make sure Docker is running: `docker ps`
+    2. Check if the database container is healthy: `docker compose ps`
+    3. Verify the `DATABASE_URL` in `apps/web/.env.local` matches the Docker config
+
+    Default value:
+    ```bash
+    DATABASE_URL="postgresql://opencut:opencut@localhost:5432/opencut"
+    ```
   </Accordion>
 </AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
 
 ## Next steps
 
-Now that you have your docs running, explore these key features:
+Now that OpenCut is running:
 
 <CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
+  <Card title="Explore features" icon="compass" href="/features/timeline-editing">
+    Learn about timeline editing, multi-track support, and more
+  </Card>
+  <Card title="Keyboard shortcuts" icon="keyboard" href="/features/keyboard-shortcuts">
+    Speed up your workflow with keyboard shortcuts
+  </Card>
+  <Card title="Full installation" icon="download" href="/installation">
+    See detailed installation options including self-hosting
+  </Card>
+  <Card title="Contributing" icon="code-branch" href="/development/contributing">
+    Help improve OpenCut by contributing code or reporting bugs
+  </Card>
 </CardGroup>
 
-<Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
-</Note>
+## Available scripts
+
+Here are the most useful commands for development:
+
+```bash
+# Start web app in development mode
+bun dev:web
+
+# Build web app for production
+bun build:web
+
+# Run linting
+bun run lint:web
+
+# Fix linting issues
+bun run lint:web:fix
+
+# Format code
+bun run format:web
+
+# Run tests
+bun test
+```
+
+<Tip>
+  The development server supports hot module replacement (HMR), so your changes will appear instantly without refreshing the page.
+</Tip>

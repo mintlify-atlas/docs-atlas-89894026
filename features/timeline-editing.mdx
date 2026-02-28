@@ -1,0 +1,251 @@
+---
+title: Timeline editing
+description: Learn how to edit videos using OpenCut's timeline editor with precise controls and intuitive workflows
+---
+
+OpenCut's timeline editor provides a powerful interface for arranging and editing your video content. The timeline supports multiple tracks, precise playback control, and frame-accurate editing.
+
+## Timeline overview
+
+The timeline is divided into several key areas:
+
+- **Ruler** - Shows time markers and allows you to navigate through your project
+- **Bookmarks row** - Add markers and notes at specific points in your timeline
+- **Track area** - Contains all your video, audio, text, and sticker tracks
+- **Track labels** - Shows track controls (mute, hide, track type icons)
+- **Playhead** - Indicates the current playback position
+
+## Playback controls
+
+### Play and pause
+
+Control playback using the play/pause button or keyboard shortcuts:
+
+- Press `Space` or `K` to play/pause
+- Playback automatically stops when reaching the end of your timeline
+- If the playhead is at the end, pressing play will reset to the start
+
+Source: `apps/web/src/core/managers/playback-manager.ts:16-42`
+
+### Seeking and navigation
+
+<AccordionGroup>
+  <Accordion title="Frame-by-frame navigation">
+    - `Left Arrow` - Step backward one frame
+    - `Right Arrow` - Step forward one frame
+    
+    Perfect for finding the exact frame to make a cut.
+  </Accordion>
+
+  <Accordion title="Jump navigation">
+    - `Shift + Right Arrow` - Jump forward 5 seconds
+    - `Shift + Left Arrow` - Jump backward 5 seconds
+    - `Home` or `Enter` - Go to timeline start
+    - `End` - Go to timeline end
+  </Accordion>
+
+  <Accordion title="Seek shortcuts">
+    - `J` - Seek backward 1 second
+    - `L` - Seek forward 1 second
+  </Accordion>
+</AccordionGroup>
+
+### Timeline scrubbing
+
+Click anywhere on the ruler to instantly jump to that point in time. You can also click and drag the playhead for precise scrubbing.
+
+Source: `apps/web/src/hooks/timeline/use-timeline-seek.ts`
+
+## Zoom and scroll
+
+### Zooming
+
+Adjust the timeline zoom level to see more or less detail:
+
+- Use the zoom slider in the timeline toolbar
+- Click the zoom in (+) or zoom out (-) buttons
+- Scroll with mouse wheel while holding modifier key
+
+The minimum zoom level automatically adjusts based on your project duration to ensure the entire timeline fits in view.
+
+Source: `apps/web/src/constants/timeline-constants.ts`
+
+### Scrolling
+
+- **Horizontal scroll** - Use the scrollbar or Shift + mouse wheel
+- **Vertical scroll** - Mouse wheel scrolls through tracks
+- **Auto-scroll** - When dragging elements near edges, the timeline auto-scrolls
+
+## Timeline interactions
+
+### Selecting elements
+
+<Steps>
+  <Step title="Single selection">
+    Click on any element in the timeline to select it. The selected element will be highlighted.
+  </Step>
+  
+  <Step title="Multiple selection">
+    - Click and drag to create a selection box around multiple elements
+    - Hold `Ctrl/Cmd` and click individual elements to add to selection
+    - Press `Ctrl/Cmd + A` to select all elements
+  </Step>
+  
+  <Step title="Clear selection">
+    Click on empty space in the timeline to deselect all elements.
+  </Step>
+</Steps>
+
+Source: `apps/web/src/core/managers/selection-manager.ts`
+
+### Moving elements
+
+Drag any element left or right to adjust its position in time:
+
+1. Click and hold on an element
+2. Drag horizontally to move it along the timeline
+3. Drag vertically to move it to a different track
+4. Release to place the element at the new position
+
+<Note>
+With **snapping enabled** (magnet icon in toolbar), elements automatically align to the playhead, other elements, and time markers for precise positioning.
+</Note>
+
+Source: `apps/web/src/hooks/timeline/element/use-element-interaction.ts`
+
+### Trimming elements
+
+Adjust the in and out points of video, audio, and image elements:
+
+1. Hover over the left or right edge of an element
+2. The cursor changes to indicate resize mode
+3. Click and drag to trim from the start (left edge) or end (right edge)
+4. The element duration updates in the properties panel
+
+Source: `apps/web/src/core/managers/timeline-manager.ts:53-93`
+
+### Resizing elements
+
+For text and sticker elements, you can adjust their duration:
+
+1. Hover over the right edge of the element
+2. Click and drag to extend or shorten the duration
+3. Release to apply the new duration
+
+Source: `apps/web/src/core/managers/timeline-manager.ts:72-93`
+
+## Editing operations
+
+### Splitting elements
+
+OpenCut provides three split operations:
+
+<CardGroup cols={3}>
+  <Card title="Split" icon="scissors">
+    Cuts element(s) at the playhead position, keeping both sides.
+    
+    **Shortcut:** `S`
+  </Card>
+  
+  <Card title="Split left" icon="align-left">
+    Cuts and removes everything before the playhead.
+    
+    **Shortcut:** `Q`
+  </Card>
+  
+  <Card title="Split right" icon="align-right">
+    Cuts and removes everything after the playhead.
+    
+    **Shortcut:** `W`
+  </Card>
+</CardGroup>
+
+The split operation works on all selected elements. If nothing is selected, it splits all elements under the playhead.
+
+Source: `apps/web/src/lib/actions/definitions.ts:73-87`
+
+### Copy and paste
+
+<Steps>
+  <Step title="Copy elements">
+    Select one or more elements and press `Ctrl/Cmd + C` to copy them to the clipboard.
+  </Step>
+  
+  <Step title="Paste elements">
+    Position the playhead where you want to paste and press `Ctrl/Cmd + V`.
+    
+    Elements are pasted at the playhead position, maintaining their relative timing and track assignments.
+  </Step>
+</Steps>
+
+Source: `apps/web/src/lib/actions/definitions.ts:93-102`
+
+### Duplicate elements
+
+Quickly create a copy of selected elements:
+
+- Press `Ctrl/Cmd + D` to duplicate
+- The duplicate appears immediately after the original element
+- Works with multiple selected elements
+
+Source: `apps/web/src/core/managers/timeline-manager.ts:274-282`
+
+### Delete elements
+
+Remove unwanted elements from your timeline:
+
+- Select elements and press `Backspace` or `Delete`
+- Right-click an element and choose "Delete" from the context menu
+- Click the delete button in the timeline toolbar
+
+Source: `apps/web/src/lib/actions/definitions.ts:88-92`
+
+## Advanced features
+
+### Snapping
+
+Toggle snapping on/off using the magnet icon in the toolbar or press `N`.
+
+When enabled, elements snap to:
+- The playhead position
+- Start and end points of other elements
+- Timeline start (0:00)
+
+A visual indicator shows when snapping is active.
+
+Source: `apps/web/src/lib/actions/definitions.ts:103-107`
+
+### Ripple editing
+
+Enable ripple editing using the link icon in the timeline toolbar.
+
+When active, editing operations automatically shift subsequent elements to maintain the timeline flow without gaps.
+
+Source: `apps/web/src/components/editor/panels/timeline/timeline-toolbar.tsx:196-216`
+
+### Bookmarks
+
+Add bookmarks to mark important points in your timeline:
+
+1. Position the playhead at the desired time
+2. Press the bookmark button or use the keyboard shortcut
+3. Toggle bookmark on/off at the current playhead position
+4. Bookmarks appear in the bookmarks row above the tracks
+5. Drag bookmarks to reposition them
+
+Source: `apps/web/src/lib/actions/definitions.ts:126-129`
+
+<Tip>
+Bookmarks are perfect for marking edit points, music beats, or scene changes before you start cutting.
+</Tip>
+
+## Undo and redo
+
+All editing operations support unlimited undo/redo:
+
+- `Ctrl/Cmd + Z` - Undo last action
+- `Ctrl/Cmd + Shift + Z` or `Ctrl/Cmd + Y` - Redo
+
+Every edit is tracked in the command history, allowing you to experiment freely and revert changes at any time.
+
+Source: `apps/web/src/lib/actions/definitions.ts:130-139`

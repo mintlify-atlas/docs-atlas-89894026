@@ -1,0 +1,181 @@
+---
+title: EditorCore
+description: The main singleton class that manages all editor functionality
+---
+
+## Overview
+
+EditorCore is the central singleton that coordinates all editor functionality through specialized manager instances. It follows the singleton pattern to ensure only one editor instance exists at a time.
+
+## Architecture
+
+The EditorCore provides access to specialized managers:
+
+- `playback` - Controls video playback and seeking
+- `timeline` - Manages tracks and timeline elements
+- `scenes` - Handles scenes and bookmarks
+- `project` - Manages project lifecycle and settings
+- `media` - Handles media asset storage
+- `renderer` - Controls video rendering and export
+- `command` - Provides undo/redo functionality
+- `save` - Manages auto-save behavior
+- `audio` - Controls audio playback
+- `selection` - Tracks selected elements
+
+## Usage
+
+### In React components
+
+Always use the `useEditor()` hook in React components. The hook automatically subscribes to state changes and triggers re-renders:
+
+```tsx
+import { useEditor } from '@/hooks/use-editor';
+
+function MyComponent() {
+  const editor = useEditor();
+  const tracks = editor.timeline.getTracks();
+
+  return <div>{tracks.length} tracks</div>;
+}
+```
+
+### Outside React components
+
+Use `EditorCore.getInstance()` directly in utilities, event handlers, or non-React code:
+
+```typescript
+import { EditorCore } from "@/core";
+
+const editor = EditorCore.getInstance();
+editor.playback.play();
+```
+
+<Warning>
+Do not use `EditorCore.getInstance()` inside React components. Always use the `useEditor()` hook to ensure proper reactivity.
+</Warning>
+
+## Methods
+
+### getInstance()
+
+Returns the singleton EditorCore instance, creating it if it doesn't exist.
+
+```typescript
+static getInstance(): EditorCore
+```
+
+**Returns**
+
+- `EditorCore` - The singleton editor instance
+
+**Example**
+
+```typescript
+const editor = EditorCore.getInstance();
+```
+
+### reset()
+
+Resets the singleton instance. Used primarily for testing.
+
+```typescript
+static reset(): void
+```
+
+<Warning>
+This method destroys the current editor instance. Only use this in test environments.
+</Warning>
+
+## Properties
+
+All manager properties are readonly and initialized when the EditorCore instance is created:
+
+### command
+
+Manages undo/redo command history.
+
+```typescript
+readonly command: CommandManager
+```
+
+### playback
+
+Controls video playback state and seeking.
+
+```typescript
+readonly playback: PlaybackManager
+```
+
+See [PlaybackManager API](/api/playback-manager) for details.
+
+### timeline
+
+Manages timeline tracks and elements.
+
+```typescript
+readonly timeline: TimelineManager
+```
+
+See [TimelineManager API](/api/timeline-manager) for details.
+
+### scenes
+
+Handles scenes and bookmarks.
+
+```typescript
+readonly scenes: ScenesManager
+```
+
+See [ScenesManager API](/api/scene-manager) for details.
+
+### project
+
+Manages project lifecycle, settings, and metadata.
+
+```typescript
+readonly project: ProjectManager
+```
+
+See [ProjectManager API](/api/project-manager) for details.
+
+### media
+
+Handles media asset storage and retrieval.
+
+```typescript
+readonly media: MediaManager
+```
+
+See [MediaManager API](/api/media-manager) for details.
+
+### renderer
+
+Controls rendering and video export.
+
+```typescript
+readonly renderer: RendererManager
+```
+
+### save
+
+Manages auto-save behavior and dirty state tracking.
+
+```typescript
+readonly save: SaveManager
+```
+
+### audio
+
+Controls audio playback and mixing.
+
+```typescript
+readonly audio: AudioManager
+```
+
+### selection
+
+Tracks currently selected timeline elements.
+
+```typescript
+readonly selection: SelectionManager
+```

@@ -1,0 +1,622 @@
+---
+title: ProjectManager
+description: Manages project lifecycle, settings, and metadata
+---
+
+## Overview
+
+The ProjectManager handles project creation, loading, saving, and settings management. It also manages project metadata and the project list. Access it through `editor.project`.
+
+## Usage
+
+### Creating and loading projects
+
+```typescript
+// Create a new project
+const projectId = await editor.project.createNewProject({ 
+  name: 'My Video Project' 
+});
+
+// Load an existing project
+await editor.project.loadProject({ id: projectId });
+
+// Get the active project
+const project = editor.project.getActive();
+console.log(project.metadata.name);
+```
+
+### Updating project settings
+
+```typescript
+// Update canvas size
+await editor.project.updateSettings({
+  settings: {
+    canvasSize: { width: 1920, height: 1080 }
+  }
+});
+
+// Update FPS
+await editor.project.updateSettings({
+  settings: { fps: 60 }
+});
+```
+
+### Exporting the project
+
+```typescript
+const result = await editor.project.export({
+  options: {
+    format: 'mp4',
+    quality: 'high',
+    fps: 30
+  }
+});
+```
+
+## Project lifecycle methods
+
+### createNewProject()
+
+Creates a new project with a default main scene.
+
+```typescript
+createNewProject({ name }: { name: string }): Promise<string>
+```
+
+<ParamField path="name" type="string" required>
+  Name of the new project
+</ParamField>
+
+**Returns**
+
+- `Promise<string>` - The ID of the created project
+
+**Example**
+
+```typescript
+const projectId = await editor.project.createNewProject({
+  name: 'My New Video'
+});
+```
+
+### loadProject()
+
+Loads an existing project by ID.
+
+```typescript
+loadProject({ id }: { id: string }): Promise<void>
+```
+
+<ParamField path="id" type="string" required>
+  ID of the project to load
+</ParamField>
+
+**Example**
+
+```typescript
+await editor.project.loadProject({ id: 'project-123' });
+```
+
+<Note>
+Loading a project clears the current project, media assets, and scenes before loading the new one.
+</Note>
+
+### saveCurrentProject()
+
+Saves the currently active project.
+
+```typescript
+saveCurrentProject(): Promise<void>
+```
+
+**Example**
+
+```typescript
+await editor.project.saveCurrentProject();
+```
+
+<Note>
+The project is automatically saved via the SaveManager. Manual saves are rarely needed.
+</Note>
+
+### closeProject()
+
+Closes the active project and clears all state.
+
+```typescript
+closeProject(): void
+```
+
+**Example**
+
+```typescript
+editor.project.closeProject();
+```
+
+### loadAllProjects()
+
+Loads metadata for all saved projects.
+
+```typescript
+loadAllProjects(): Promise<void>
+```
+
+**Example**
+
+```typescript
+await editor.project.loadAllProjects();
+const projects = editor.project.getSavedProjects();
+```
+
+### deleteProjects()
+
+Deletes one or more projects.
+
+```typescript
+deleteProjects({ ids }: { ids: string[] }): Promise<void>
+```
+
+<ParamField path="ids" type="string[]" required>
+  Array of project IDs to delete
+</ParamField>
+
+**Example**
+
+```typescript
+await editor.project.deleteProjects({ 
+  ids: ['project-1', 'project-2'] 
+});
+```
+
+<Warning>
+If the active project is deleted, it will be closed and all state cleared.
+</Warning>
+
+### renameProject()
+
+Renames a project.
+
+```typescript
+renameProject({ id, name }: { 
+  id: string; 
+  name: string 
+}): Promise<void>
+```
+
+<ParamField path="id" type="string" required>
+  ID of the project to rename
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  New name for the project
+</ParamField>
+
+**Example**
+
+```typescript
+await editor.project.renameProject({
+  id: 'project-123',
+  name: 'Updated Project Name'
+});
+```
+
+### duplicateProjects()
+
+Duplicates one or more projects.
+
+```typescript
+duplicateProjects({ ids }: { ids: string[] }): Promise<string[]>
+```
+
+<ParamField path="ids" type="string[]" required>
+  Array of project IDs to duplicate
+</ParamField>
+
+**Returns**
+
+- `Promise<string[]>` - IDs of the duplicated projects
+
+**Example**
+
+```typescript
+const duplicatedIds = await editor.project.duplicateProjects({
+  ids: ['project-123']
+});
+```
+
+<Note>
+Duplicated projects are named with a number prefix: "(1) Original Name", "(2) Original Name", etc.
+</Note>
+
+## Settings methods
+
+### updateSettings()
+
+Updates project settings.
+
+```typescript
+updateSettings({
+  settings,
+  pushHistory = true
+}: {
+  settings: Partial<TProjectSettings>;
+  pushHistory?: boolean;
+}): Promise<void>
+```
+
+<ParamField path="settings" type="Partial<TProjectSettings>" required>
+  Settings to update
+</ParamField>
+
+<ParamField path="pushHistory" type="boolean" default="true">
+  Whether to push to undo/redo history
+</ParamField>
+
+**Example**
+
+```typescript
+await editor.project.updateSettings({
+  settings: {
+    fps: 60,
+    canvasSize: { width: 1920, height: 1080 },
+    background: { type: 'color', color: '#000000' }
+  }
+});
+```
+
+### updateThumbnail()
+
+Updates the project thumbnail.
+
+```typescript
+updateThumbnail({ thumbnail }: { thumbnail: string }): Promise<void>
+```
+
+<ParamField path="thumbnail" type="string" required>
+  Base64-encoded thumbnail image data URL
+</ParamField>
+
+**Example**
+
+```typescript
+await editor.project.updateThumbnail({ 
+  thumbnail: 'data:image/png;base64,...' 
+});
+```
+
+## Export methods
+
+### export()
+
+Exports the project to video.
+
+```typescript
+export({ options }: { options: ExportOptions }): Promise<ExportResult>
+```
+
+<ParamField path="options" type="ExportOptions" required>
+  Export configuration (format, quality, fps, etc.)
+</ParamField>
+
+**Returns**
+
+- `Promise<ExportResult>` - Export result with video blob or error
+
+**Example**
+
+```typescript
+const result = await editor.project.export({
+  options: {
+    format: 'mp4',
+    quality: 'high',
+    fps: 30,
+    canvasSize: { width: 1920, height: 1080 }
+  }
+});
+
+if (result.success) {
+  // Download the video
+  const url = URL.createObjectURL(result.blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = 'video.mp4';
+  a.click();
+}
+```
+
+## Query methods
+
+### getActive()
+
+Returns the active project.
+
+```typescript
+getActive(): TProject
+```
+
+**Returns**
+
+- `TProject` - The active project
+
+**Example**
+
+```typescript
+const project = editor.project.getActive();
+console.log(`Project: ${project.metadata.name}`);
+```
+
+<Warning>
+Throws an error if no project is active.
+</Warning>
+
+### getActiveOrNull()
+
+Returns the active project or null if none is active.
+
+```typescript
+getActiveOrNull(): TProject | null
+```
+
+**Returns**
+
+- `TProject | null` - The active project, or null
+
+**Example**
+
+```typescript
+const project = editor.project.getActiveOrNull();
+if (project) {
+  console.log(`Active project: ${project.metadata.name}`);
+}
+```
+
+<Note>
+In most cases, use `getActive()` instead. Only use this for rare cases where a project may not be active.
+</Note>
+
+### getSavedProjects()
+
+Returns metadata for all saved projects.
+
+```typescript
+getSavedProjects(): TProjectMetadata[]
+```
+
+**Returns**
+
+- `TProjectMetadata[]` - Array of project metadata
+
+**Example**
+
+```typescript
+const projects = editor.project.getSavedProjects();
+console.log(`Total projects: ${projects.length}`);
+```
+
+### getFilteredAndSortedProjects()
+
+Filters and sorts projects by search query and sort option.
+
+```typescript
+getFilteredAndSortedProjects({
+  searchQuery,
+  sortOption
+}: {
+  searchQuery: string;
+  sortOption: TProjectSortOption;
+}): TProjectMetadata[]
+```
+
+<ParamField path="searchQuery" type="string" required>
+  Search query to filter by project name
+</ParamField>
+
+<ParamField path="sortOption" type="TProjectSortOption" required>
+  Sort option (e.g., "name-asc", "updatedAt-desc")
+</ParamField>
+
+**Returns**
+
+- `TProjectMetadata[]` - Filtered and sorted projects
+
+**Example**
+
+```typescript
+const projects = editor.project.getFilteredAndSortedProjects({
+  searchQuery: 'video',
+  sortOption: 'updatedAt-desc'
+});
+```
+
+### getIsLoading()
+
+Returns whether a project is currently loading.
+
+```typescript
+getIsLoading(): boolean
+```
+
+**Returns**
+
+- `boolean` - True if loading
+
+**Example**
+
+```typescript
+if (editor.project.getIsLoading()) {
+  console.log('Loading project...');
+}
+```
+
+### getIsInitialized()
+
+Returns whether the ProjectManager has been initialized.
+
+```typescript
+getIsInitialized(): boolean
+```
+
+**Returns**
+
+- `boolean` - True if initialized
+
+**Example**
+
+```typescript
+if (!editor.project.getIsInitialized()) {
+  await editor.project.loadAllProjects();
+}
+```
+
+### getMigrationState()
+
+Returns the current migration state.
+
+```typescript
+getMigrationState(): MigrationState
+```
+
+**Returns**
+
+- `MigrationState` - Current migration progress
+
+**Example**
+
+```typescript
+const migration = editor.project.getMigrationState();
+if (migration.isMigrating) {
+  console.log(`Migrating ${migration.projectName}...`);
+}
+```
+
+## Timeline view state methods
+
+### getTimelineViewState()
+
+Returns the timeline view state (zoom, scroll position, etc.).
+
+```typescript
+getTimelineViewState(): TTimelineViewState
+```
+
+**Returns**
+
+- `TTimelineViewState` - Timeline view state
+
+**Example**
+
+```typescript
+const viewState = editor.project.getTimelineViewState();
+console.log(`Zoom: ${viewState.zoom}`);
+```
+
+### setTimelineViewState()
+
+Sets the timeline view state.
+
+```typescript
+setTimelineViewState({ viewState }: { 
+  viewState: TTimelineViewState 
+}): void
+```
+
+<ParamField path="viewState" type="TTimelineViewState" required>
+  New timeline view state
+</ParamField>
+
+**Example**
+
+```typescript
+editor.project.setTimelineViewState({
+  viewState: {
+    zoom: 1.5,
+    scrollLeft: 100
+  }
+});
+```
+
+## Internal methods
+
+### setActiveProject()
+
+Sets the active project. Called internally by other managers.
+
+```typescript
+setActiveProject({ project }: { project: TProject }): void
+```
+
+<ParamField path="project" type="TProject" required>
+  Project to set as active
+</ParamField>
+
+### prepareExit()
+
+Prepares the project for exit by updating thumbnails. Called internally on app close.
+
+```typescript
+prepareExit(): Promise<void>
+```
+
+### isInvalidProjectId()
+
+Checks if a project ID is marked as invalid.
+
+```typescript
+isInvalidProjectId({ id }: { id: string }): boolean
+```
+
+<ParamField path="id" type="string" required>
+  Project ID to check
+</ParamField>
+
+**Returns**
+
+- `boolean` - True if invalid
+
+### markProjectIdAsInvalid()
+
+Marks a project ID as invalid.
+
+```typescript
+markProjectIdAsInvalid({ id }: { id: string }): void
+```
+
+<ParamField path="id" type="string" required>
+  Project ID to mark as invalid
+</ParamField>
+
+### clearInvalidProjectIds()
+
+Clears all invalid project IDs.
+
+```typescript
+clearInvalidProjectIds(): void
+```
+
+### subscribe()
+
+Subscribes to project state changes.
+
+```typescript
+subscribe(listener: () => void): () => void
+```
+
+<ParamField path="listener" type="() => void" required>
+  Function called when project state changes
+</ParamField>
+
+**Returns**
+
+- `() => void` - Unsubscribe function
+
+**Example**
+
+```typescript
+const unsubscribe = editor.project.subscribe(() => {
+  console.log('Project changed');
+});
+```
+
+<Note>
+The `useEditor()` hook automatically subscribes to project changes. Only use `subscribe()` directly in non-React code.
+</Note>

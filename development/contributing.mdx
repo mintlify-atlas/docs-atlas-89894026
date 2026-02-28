@@ -1,0 +1,410 @@
+---
+title: Contributing
+description: Guidelines and workflow for contributing to OpenCut
+---
+
+<Warning>
+We are currently **NOT accepting feature PRs** while we build out the core editor. If you want to contribute:
+
+1. Open an issue first to discuss your idea
+2. Wait for maintainer approval
+3. Only then start coding
+
+Critical bug fixes may be accepted on a case-by-case basis.
+</Warning>
+
+Thank you for your interest in contributing to OpenCut! This document provides guidelines and instructions for effective contributions.
+
+## What to focus on
+
+To make your contributions as effective as possible, focus on these areas:
+
+### Good areas to contribute
+
+<CardGroup cols={2}>
+  <Card title="Timeline functionality" icon="timeline">
+    Timeline UI improvements, track management, element manipulation
+  </Card>
+  <Card title="Project management" icon="folder-open">
+    Project creation, loading, organization, and metadata
+  </Card>
+  <Card title="Performance" icon="gauge-high">
+    Optimizations, lazy loading, code splitting, rendering improvements
+  </Card>
+  <Card title="Bug fixes" icon="bug">
+    Fixing issues in existing functionality
+  </Card>
+  <Card title="UI/UX improvements" icon="paintbrush">
+    Interface refinements, accessibility, responsive design
+  </Card>
+  <Card title="Documentation" icon="book">
+    Code comments, guides, examples, API documentation
+  </Card>
+</CardGroup>
+
+### Areas to avoid
+
+<Warning>
+Please **avoid** contributing to these areas for now:
+
+- **Preview panel enhancements** - Text fonts, stickers, effects, overlays
+- **Export functionality** - Export formats, quality settings, rendering
+- **Preview rendering optimizations** - Canvas rendering, preview performance
+</Warning>
+
+**Why?** We're planning a major refactor of the preview system. The current preview renders DOM elements (HTML), but we're moving to a **binary rendering approach** similar to CapCut. This ensures:
+
+- Consistency between preview and export
+- Better performance and quality
+- More accurate representation of final output
+
+The current HTML-based preview is essentially a prototype. The binary approach will be the production system. To avoid wasted effort, please focus on other areas until this refactor is complete.
+
+If you're unsure whether your idea falls into the preview category, ask in [Discord](https://discord.gg/zmR9N35cjK) or create a GitHub issue!
+
+## Getting started
+
+Before contributing, ensure you have your development environment set up.
+
+<Card title="Development Setup" icon="wrench" href="/development/setup">
+  Follow the setup guide to get your local environment running
+</Card>
+
+## Contribution workflow
+
+<Steps>
+  <Step title="Open an issue">
+    Before starting work, open an issue to discuss your proposed changes:
+
+    - **Bug fixes:** Describe the bug, steps to reproduce, and expected behavior
+    - **Features:** Explain the use case, benefits, and implementation approach
+    - **Improvements:** Detail what you want to improve and why
+
+    Wait for maintainer feedback and approval before proceeding.
+  </Step>
+
+  <Step title="Fork and clone">
+    Fork the repository to your GitHub account and clone it locally:
+
+    ```bash
+    git clone https://github.com/YOUR_USERNAME/opencut.git
+    cd opencut
+    ```
+  </Step>
+
+  <Step title="Create a feature branch">
+    Create a descriptive branch name:
+
+    ```bash
+    # For features
+    git checkout -b feature/your-feature-name
+
+    # For bug fixes
+    git checkout -b fix/bug-description
+
+    # For improvements
+    git checkout -b improve/what-you-improve
+    ```
+  </Step>
+
+  <Step title="Make your changes">
+    Make your changes following the code style guidelines below.
+
+    <Tip>
+    Commit frequently with clear, descriptive commit messages that explain the "why" behind changes, not just the "what".
+    </Tip>
+  </Step>
+
+  <Step title="Test your changes">
+    Ensure your changes work as expected:
+
+    - Test the functionality manually
+    - Run existing tests: `bun test`
+    - Add new tests if applicable
+  </Step>
+
+  <Step title="Lint and format">
+    Run linting and formatting from the `apps/web` directory:
+
+    <CodeGroup>
+      ```bash Bun
+      cd apps/web
+      bun run lint
+      bunx biome format --write .
+      ```
+
+      ```bash npm
+      cd apps/web
+      npm run lint
+      npx biome format --write .
+      ```
+
+      ```bash pnpm
+      cd apps/web
+      pnpm run lint
+      pnpm exec biome format --write .
+      ```
+    </CodeGroup>
+  </Step>
+
+  <Step title="Commit your changes">
+    Write clear, concise commit messages:
+
+    ```bash
+    git add .
+    git commit -m "fix: resolve timeline element selection bug"
+    ```
+
+    Use conventional commit prefixes:
+    - `feat:` - New feature
+    - `fix:` - Bug fix
+    - `improve:` - Enhancement to existing feature
+    - `refactor:` - Code refactoring
+    - `docs:` - Documentation changes
+    - `test:` - Test additions or changes
+    - `chore:` - Build process or tooling changes
+  </Step>
+
+  <Step title="Push and create a pull request">
+    Push your branch and create a pull request:
+
+    ```bash
+    git push origin feature/your-feature-name
+    ```
+
+    On GitHub:
+    1. Navigate to your fork
+    2. Click "Compare & pull request"
+    3. Fill out the pull request template completely
+    4. Link any related issues
+    5. Request review from maintainers
+  </Step>
+
+  <Step title="Address feedback">
+    Respond to review comments and make requested changes:
+
+    ```bash
+    # Make changes based on feedback
+    git add .
+    git commit -m "address review feedback"
+    git push origin feature/your-feature-name
+    ```
+  </Step>
+</Steps>
+
+## Code style
+
+OpenCut uses [Biome](https://biomejs.dev/) for code formatting and linting.
+
+### Formatting rules
+
+- **Indent style:** Tabs
+- **Line width:** 80 characters
+- **Quote style:** Double quotes
+- **Semicolons:** Required
+
+### Running code quality tools
+
+From the `apps/web/` directory:
+
+<CodeGroup>
+  ```bash Check linting
+  bun run lint
+  ```
+
+  ```bash Fix linting issues
+  bun run lint:fix
+  ```
+
+  ```bash Format code
+  bun run format
+  ```
+</CodeGroup>
+
+From the project root:
+
+<CodeGroup>
+  ```bash Check linting
+  bun lint:web
+  ```
+
+  ```bash Fix linting issues
+  bun lint:web:fix
+  ```
+
+  ```bash Format code
+  bun format:web
+  ```
+</CodeGroup>
+
+### Code patterns
+
+#### Use the actions system for user operations
+
+```typescript
+import { invokeAction } from '@/lib/actions';
+
+// Good - uses action system
+const handleSplit = () => invokeAction("split-selected");
+
+// Avoid - bypasses UX layer
+const handleSplit = () => editor.timeline.splitElements({ ... });
+```
+
+#### Use the useEditor() hook in components
+
+```typescript
+import { useEditor } from '@/hooks/use-editor';
+
+// Good
+function TimelineComponent() {
+  const editor = useEditor();
+  const tracks = editor.timeline.getTracks();
+  return <div>{tracks.length} tracks</div>;
+}
+
+// Avoid - use useEditor() instead
+function TimelineComponent() {
+  const editor = EditorCore.getInstance();
+  // ...
+}
+```
+
+#### Follow directory conventions
+
+- **`lib/`** - Domain-specific logic (actions, commands, video processing)
+- **`utils/`** - Generic helper functions that could work in any app
+- **`services/`** - External service integrations
+- **`components/`** - React components
+
+## Pull request guidelines
+
+### PR title format
+
+Use conventional commit format:
+
+```
+feat: add timeline zoom controls
+fix: resolve playback position sync issue
+improve: enhance timeline performance
+```
+
+### PR description
+
+Fill out the pull request template completely:
+
+1. **Summary** - Brief description of changes
+2. **Motivation** - Why are these changes needed?
+3. **Changes** - Detailed list of what changed
+4. **Testing** - How did you test these changes?
+5. **Screenshots** - For UI changes, include before/after screenshots
+6. **Related issues** - Link to related issues using `Closes #123` or `Relates to #456`
+
+### PR checklist
+
+Before submitting, ensure:
+
+- [ ] Code follows the style guidelines
+- [ ] Code has been linted and formatted
+- [ ] All tests pass
+- [ ] New tests added for new functionality
+- [ ] Documentation updated if needed
+- [ ] PR description is complete
+- [ ] Related issues are linked
+- [ ] No merge conflicts
+- [ ] CI/CD checks pass
+
+## Reporting bugs
+
+When reporting bugs, include:
+
+1. **Clear title** - Concise description of the issue
+2. **Steps to reproduce** - Detailed steps to reproduce the bug
+3. **Expected behavior** - What should happen
+4. **Actual behavior** - What actually happens
+5. **Screenshots/videos** - Visual evidence if applicable
+6. **Environment** - Browser, OS, version numbers
+7. **Console errors** - Any error messages from the browser console
+
+### Bug report template
+
+```markdown
+## Bug Description
+Brief description of the bug
+
+## Steps to Reproduce
+1. Go to '...'
+2. Click on '...'
+3. Scroll down to '...'
+4. See error
+
+## Expected Behavior
+What should happen
+
+## Actual Behavior
+What actually happens
+
+## Environment
+- Browser: Chrome 120.0
+- OS: macOS 14.0
+- OpenCut version: main branch
+
+## Screenshots
+[Attach screenshots]
+
+## Console Errors
+```
+[Paste console errors]
+```
+```
+
+## Suggesting features
+
+<Warning>
+Remember: Feature PRs are not currently being accepted. Open an issue first and wait for approval.
+</Warning>
+
+When suggesting features, explain:
+
+1. **Use case** - What problem does this solve?
+2. **Target users** - Who benefits from this feature?
+3. **Implementation approach** - How might this be implemented?
+4. **Alternatives** - What other solutions exist?
+5. **Additional context** - Screenshots, mockups, examples from other tools
+
+## Community guidelines
+
+- **Be respectful and inclusive** - Treat everyone with respect
+- **Be patient** - Maintainers are volunteers with limited time
+- **Be constructive** - Provide helpful feedback and suggestions
+- **Follow the Code of Conduct** - Maintain a welcoming environment
+- **Help others** - Answer questions and assist other contributors
+
+## Getting help
+
+Need help contributing?
+
+- **Discord** - Join our [Discord community](https://discord.gg/zmR9N35cjK)
+- **GitHub Issues** - Ask questions by opening an issue
+- **Documentation** - Check the [development guides](/development/setup)
+
+## Recognition
+
+Contributors are recognized in:
+
+- GitHub contributors page
+- Release notes for significant contributions
+- Project documentation
+
+Thank you for contributing to OpenCut!
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Architecture" icon="diagram-project" href="/development/architecture">
+    Learn about the system architecture
+  </Card>
+  <Card title="Testing" icon="vial" href="/development/testing">
+    Understand the testing approach
+  </Card>
+</CardGroup>

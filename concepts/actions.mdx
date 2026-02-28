@@ -1,0 +1,397 @@
+---
+title: Actions system
+description: User-triggered operations with keyboard shortcuts and action handlers
+---
+
+The actions system is the trigger layer for user-initiated operations in OpenCut. It provides a centralized registry of actions with keyboard shortcuts, categories, and a consistent invocation API.
+
+## What are actions?
+
+Actions represent user-triggered operations like play/pause, split elements, or undo. They bridge the gap between UI interactions and underlying editor operations.
+
+<Note>
+  The single source of truth for all actions is `apps/web/src/lib/actions/definitions.ts`.
+</Note>
+
+## Action definition
+
+```typescript apps/web/src/lib/actions/definitions.ts
+export type TActionCategory =
+  | "playback"
+  | "navigation"
+  | "editing"
+  | "selection"
+  | "history"
+  | "timeline"
+  | "controls";
+
+export interface TActionDefinition {
+  description: string;
+  category: TActionCategory;
+  defaultShortcuts?: ShortcutKey[];
+  args?: Record<string, unknown>;
+}
+```
+
+## Available actions
+
+Here's a subset of the actions defined in OpenCut:
+
+<Tabs>
+  <Tab title="Playback">
+    ```typescript apps/web/src/lib/actions/definitions.ts
+    export const ACTIONS = {
+      "toggle-play": {
+        description: "Play/Pause",
+        category: "playback",
+        defaultShortcuts: ["space", "k"],
+      },
+      "stop-playback": {
+        description: "Stop playback",
+        category: "playback",
+      },
+      "seek-forward": {
+        description: "Seek forward 1 second",
+        category: "playback",
+        defaultShortcuts: ["l"],
+        args: { seconds: "number" },
+      },
+      "seek-backward": {
+        description: "Seek backward 1 second",
+        category: "playback",
+        defaultShortcuts: ["j"],
+        args: { seconds: "number" },
+      },
+    };
+    ```
+  </Tab>
+  
+  <Tab title="Navigation">
+    ```typescript apps/web/src/lib/actions/definitions.ts
+    "frame-step-forward": {
+      description: "Frame step forward",
+      category: "navigation",
+      defaultShortcuts: ["right"],
+    },
+    "frame-step-backward": {
+      description: "Frame step backward",
+      category: "navigation",
+      defaultShortcuts: ["left"],
+    },
+    "jump-forward": {
+      description: "Jump forward 5 seconds",
+      category: "navigation",
+      defaultShortcuts: ["shift+right"],
+      args: { seconds: "number" },
+    },
+    "jump-backward": {
+      description: "Jump backward 5 seconds",
+      category: "navigation",
+      defaultShortcuts: ["shift+left"],
+      args: { seconds: "number" },
+    },
+    "goto-start": {
+      description: "Go to timeline start",
+      category: "navigation",
+      defaultShortcuts: ["home", "enter"],
+    },
+    "goto-end": {
+      description: "Go to timeline end",
+      category: "navigation",
+      defaultShortcuts: ["end"],
+    },
+    ```
+  </Tab>
+  
+  <Tab title="Editing">
+    ```typescript apps/web/src/lib/actions/definitions.ts
+    split: {
+      description: "Split elements at playhead",
+      category: "editing",
+      defaultShortcuts: ["s"],
+    },
+    "split-left": {
+      description: "Split and remove left",
+      category: "editing",
+      defaultShortcuts: ["q"],
+    },
+    "split-right": {
+      description: "Split and remove right",
+      category: "editing",
+      defaultShortcuts: ["w"],
+    },
+    "delete-selected": {
+      description: "Delete selected elements",
+      category: "editing",
+      defaultShortcuts: ["backspace", "delete"],
+    },
+    "copy-selected": {
+      description: "Copy selected elements",
+      category: "editing",
+      defaultShortcuts: ["ctrl+c"],
+    },
+    "paste-copied": {
+      description: "Paste elements at playhead",
+      category: "editing",
+      defaultShortcuts: ["ctrl+v"],
+    },
+    "toggle-snapping": {
+      description: "Toggle snapping",
+      category: "editing",
+      defaultShortcuts: ["n"],
+    },
+    ```
+  </Tab>
+  
+  <Tab title="History">
+    ```typescript apps/web/src/lib/actions/definitions.ts
+    undo: {
+      description: "Undo",
+      category: "history",
+      defaultShortcuts: ["ctrl+z"],
+    },
+    redo: {
+      description: "Redo",
+      category: "history",
+      defaultShortcuts: ["ctrl+shift+z", "ctrl+y"],
+    },
+    ```
+  </Tab>
+</Tabs>
+
+## Action invocation
+
+Use `invokeAction()` to trigger actions from UI components:
+
+```typescript apps/web/src/lib/actions/registry.ts
+import { invokeAction } from '@/lib/actions';
+
+// Simple action without arguments
+const handleSplit = () => {
+  invokeAction("split");
+};
+
+// Action with arguments
+const handleSeek = () => {
+  invokeAction("seek-forward", { seconds: 2 });
+};
+
+// Action with trigger context
+const handleUndo = () => {
+  invokeAction("undo", undefined, { trigger: "keyboard" });
+};
+```
+
+<Tip>
+  Always use `invokeAction()` for user-triggered operations. This ensures proper UX feedback like toasts, validation messages, and consistent behavior.
+</Tip>
+
+## Actions vs direct editor calls
+
+Understand when to use each approach:
+
+<Tabs>
+  <Tab title="Use actions">
+    **For user-triggered operations:**
+
+    ```typescript
+    import { invokeAction } from '@/lib/actions';
+
+    // Good - uses action system
+    const handleSplit = () => invokeAction("split");
+    const handleDelete = () => invokeAction("delete-selected");
+    const handleCopy = () => invokeAction("copy-selected");
+    ```
+
+    Benefits:
+    - Automatic keyboard shortcut handling
+    - Consistent UX feedback (toasts, validation)
+    - Centralized action definitions
+    - Easy to add shortcuts later
+  </Tab>
+  
+  <Tab title="Use direct calls">
+    **For internal operations:**
+
+    ```typescript
+    import { EditorCore } from '@/core';
+
+    // Good - for complex multi-step operations
+    const editor = EditorCore.getInstance();
+    editor.timeline.splitElements({ 
+      elements: [...],
+      splitTime: 5.5,
+      retainSide: 'both'
+    });
+    ```
+
+    Use cases:
+    - Command implementations
+    - Test code
+    - Complex multi-step operations
+    - Internal helper functions
+  </Tab>
+</Tabs>
+
+<Warning>
+  Don't bypass the action system for user-triggered operations. It handles validation, feedback, and ensures consistent behavior across the app.
+</Warning>
+
+## Adding a new action
+
+Follow these steps to add a new action:
+
+### 1. Define the action
+
+Add it to `ACTIONS` in `apps/web/src/lib/actions/definitions.ts`:
+
+```typescript apps/web/src/lib/actions/definitions.ts
+export const ACTIONS = {
+  // ... existing actions
+  "my-new-action": {
+    description: "What the action does",
+    category: "editing",
+    defaultShortcuts: ["ctrl+m"],
+    args: { value: "number" },  // Optional arguments
+  },
+};
+```
+
+### 2. Add the handler
+
+Implement the handler in `apps/web/src/hooks/use-editor-actions.ts`:
+
+```typescript apps/web/src/hooks/use-editor-actions.ts
+import { useActionHandler } from '@/hooks/use-action-handler';
+
+// Inside your hook
+useActionHandler(
+  "my-new-action",
+  (args) => {
+    // Implementation
+    const editor = EditorCore.getInstance();
+    editor.timeline.someOperation({ value: args.value });
+  },
+  [/* dependencies */],
+);
+```
+
+### 3. Invoke from UI
+
+Now you can trigger it from any component:
+
+```typescript
+import { invokeAction } from '@/lib/actions';
+
+function MyButton() {
+  return (
+    <button onClick={() => invokeAction("my-new-action", { value: 42 })}>
+      Trigger Action
+    </button>
+  );
+}
+```
+
+## Action registry implementation
+
+The action system uses a simple registry pattern:
+
+```typescript apps/web/src/lib/actions/registry.ts
+type ActionHandler = (arg: unknown, trigger?: TInvocationTrigger) => void;
+const boundActions: Partial<Record<TAction, ActionHandler[]>> = {};
+
+export function bindAction<A extends TAction>(
+  action: A,
+  handler: TActionFunc<A>,
+) {
+  const handlers = boundActions[action];
+  const typedHandler = handler as ActionHandler;
+  if (handlers) {
+    handlers.push(typedHandler);
+  } else {
+    boundActions[action] = [typedHandler];
+  }
+}
+
+export function unbindAction<A extends TAction>(
+  action: A,
+  handler: TActionFunc<A>,
+) {
+  const handlers = boundActions[action];
+  if (!handlers) return;
+
+  const typedHandler = handler as ActionHandler;
+  boundActions[action] = handlers.filter((h) => h !== typedHandler);
+}
+
+export const invokeAction = <A extends TAction>(
+  action: A,
+  args?: TArgOfAction<A>,
+  trigger?: TInvocationTrigger,
+) => {
+  boundActions[action]?.forEach((handler) => handler(args, trigger));
+};
+```
+
+## Keyboard shortcuts
+
+Keyboard shortcuts are automatically mapped from action definitions:
+
+```typescript apps/web/src/lib/actions/definitions.ts
+export function getDefaultShortcuts(): Record<ShortcutKey, TAction> {
+  const shortcuts: Record<string, TAction> = {};
+
+  for (const [action, def] of Object.entries(ACTIONS)) {
+    if (def.defaultShortcuts) {
+      for (const shortcut of def.defaultShortcuts) {
+        shortcuts[shortcut] = action;
+      }
+    }
+  }
+
+  return shortcuts;
+}
+```
+
+This provides:
+- Automatic keyboard shortcut handling
+- User-customizable shortcuts (future feature)
+- Single source of truth for shortcuts
+
+## Action categories
+
+Actions are organized by category for better UI organization:
+
+- **playback** - Play, pause, seek operations
+- **navigation** - Timeline navigation and jumping
+- **editing** - Splitting, deleting, copying elements
+- **selection** - Selecting and manipulating selected items
+- **history** - Undo/redo operations
+- **timeline** - Timeline-level operations like bookmarks
+- **controls** - UI control operations
+
+## Best practices
+
+<CardGroup cols={2}>
+  <Card title="Use actions for UI" icon="mouse-pointer">
+    Always use `invokeAction()` for user-triggered operations from UI components.
+  </Card>
+  
+  <Card title="Direct calls for internal" icon="code">
+    Use direct `editor.*` calls in commands, tests, and internal helper functions.
+  </Card>
+  
+  <Card title="Clear descriptions" icon="message">
+    Write clear, concise action descriptions that appear in UI and docs.
+  </Card>
+  
+  <Card title="Logical shortcuts" icon="keyboard">
+    Choose keyboard shortcuts that are intuitive and follow common conventions.
+  </Card>
+</CardGroup>
+
+## Related concepts
+
+- [EditorCore](/concepts/editor-core) - Understanding the singleton architecture
+- [Commands](/concepts/commands) - Actions often trigger commands internally
+- [Timeline](/concepts/timeline) - Many actions operate on timeline data

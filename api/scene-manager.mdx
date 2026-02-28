@@ -1,0 +1,457 @@
+---
+title: ScenesManager
+description: Manages scenes and bookmarks in the project
+---
+
+## Overview
+
+The ScenesManager handles scene creation, switching, and bookmark management. Each project can have multiple scenes, with one marked as the main scene. Access it through `editor.scenes`.
+
+## Usage
+
+### Creating and switching scenes
+
+```typescript
+// Create a new scene
+const sceneId = await editor.scenes.createScene({ 
+  name: 'Scene 2',
+  isMain: false 
+});
+
+// Switch to the scene
+await editor.scenes.switchToScene({ sceneId });
+```
+
+### Working with bookmarks
+
+```typescript
+// Add a bookmark at current time
+const currentTime = editor.playback.getCurrentTime();
+await editor.scenes.toggleBookmark({ time: currentTime });
+
+// Check if a time is bookmarked
+const isBookmarked = editor.scenes.isBookmarked({ time: 5.0 });
+
+// Update bookmark properties
+await editor.scenes.updateBookmark({
+  time: 5.0,
+  updates: { 
+    note: 'Important moment',
+    color: '#ff0000' 
+  }
+});
+```
+
+## Scene methods
+
+### createScene()
+
+Creates a new scene in the project.
+
+```typescript
+createScene({ name, isMain }: { 
+  name: string; 
+  isMain: boolean 
+}): Promise<string>
+```
+
+<ParamField path="name" type="string" required>
+  Name of the new scene
+</ParamField>
+
+<ParamField path="isMain" type="boolean" required>
+  Whether this is the main scene
+</ParamField>
+
+**Returns**
+
+- `Promise<string>` - The ID of the created scene
+
+**Example**
+
+```typescript
+const sceneId = await editor.scenes.createScene({
+  name: 'Intro Scene',
+  isMain: false
+});
+```
+
+<Warning>
+Throws an error if no active project exists.
+</Warning>
+
+### deleteScene()
+
+Deletes a scene from the project.
+
+```typescript
+deleteScene({ sceneId }: { sceneId: string }): Promise<void>
+```
+
+<ParamField path="sceneId" type="string" required>
+  ID of the scene to delete
+</ParamField>
+
+**Example**
+
+```typescript
+await editor.scenes.deleteScene({ sceneId: 'scene-123' });
+```
+
+<Warning>
+Cannot delete the main scene or the last remaining scene. Throws an error in these cases.
+</Warning>
+
+### renameScene()
+
+Renames a scene.
+
+```typescript
+renameScene({ sceneId, name }: { 
+  sceneId: string; 
+  name: string 
+}): Promise<void>
+```
+
+<ParamField path="sceneId" type="string" required>
+  ID of the scene to rename
+</ParamField>
+
+<ParamField path="name" type="string" required>
+  New name for the scene
+</ParamField>
+
+**Example**
+
+```typescript
+await editor.scenes.renameScene({
+  sceneId: 'scene-123',
+  name: 'Updated Scene Name'
+});
+```
+
+### switchToScene()
+
+Switches the active scene.
+
+```typescript
+switchToScene({ sceneId }: { sceneId: string }): Promise<void>
+```
+
+<ParamField path="sceneId" type="string" required>
+  ID of the scene to switch to
+</ParamField>
+
+**Example**
+
+```typescript
+await editor.scenes.switchToScene({ sceneId: 'scene-123' });
+```
+
+<Warning>
+Throws an error if the scene is not found.
+</Warning>
+
+### getActiveScene()
+
+Returns the currently active scene.
+
+```typescript
+getActiveScene(): TScene
+```
+
+**Returns**
+
+- `TScene` - The active scene
+
+**Example**
+
+```typescript
+const scene = editor.scenes.getActiveScene();
+console.log(`Active scene: ${scene.name}`);
+```
+
+<Warning>
+Throws an error if no scene is active.
+</Warning>
+
+### getScenes()
+
+Returns all scenes in the project.
+
+```typescript
+getScenes(): TScene[]
+```
+
+**Returns**
+
+- `TScene[]` - Array of all scenes
+
+**Example**
+
+```typescript
+const scenes = editor.scenes.getScenes();
+console.log(`Total scenes: ${scenes.length}`);
+```
+
+### setScenes()
+
+Sets all scenes and optionally the active scene.
+
+```typescript
+setScenes({ scenes, activeSceneId }: {
+  scenes: TScene[];
+  activeSceneId?: string;
+}): void
+```
+
+<ParamField path="scenes" type="TScene[]" required>
+  Array of scenes to set
+</ParamField>
+
+<ParamField path="activeSceneId" type="string">
+  ID of the scene to make active
+</ParamField>
+
+**Example**
+
+```typescript
+editor.scenes.setScenes({
+  scenes: updatedScenes,
+  activeSceneId: 'scene-123'
+});
+```
+
+## Bookmark methods
+
+### toggleBookmark()
+
+Toggles a bookmark at a specific time.
+
+```typescript
+toggleBookmark({ time }: { time: number }): Promise<void>
+```
+
+<ParamField path="time" type="number" required>
+  Time in seconds to toggle bookmark
+</ParamField>
+
+**Example**
+
+```typescript
+// Toggle bookmark at 5 seconds
+await editor.scenes.toggleBookmark({ time: 5.0 });
+```
+
+<Note>
+Bookmarks are snapped to frame boundaries based on the project FPS.
+</Note>
+
+### isBookmarked()
+
+Checks if a time has a bookmark.
+
+```typescript
+isBookmarked({ time }: { time: number }): boolean
+```
+
+<ParamField path="time" type="number" required>
+  Time in seconds to check
+</ParamField>
+
+**Returns**
+
+- `boolean` - True if time is bookmarked
+
+**Example**
+
+```typescript
+if (editor.scenes.isBookmarked({ time: 5.0 })) {
+  console.log('Time is bookmarked');
+}
+```
+
+### removeBookmark()
+
+Removes a bookmark at a specific time.
+
+```typescript
+removeBookmark({ time }: { time: number }): Promise<void>
+```
+
+<ParamField path="time" type="number" required>
+  Time in seconds of the bookmark to remove
+</ParamField>
+
+**Example**
+
+```typescript
+await editor.scenes.removeBookmark({ time: 5.0 });
+```
+
+### updateBookmark()
+
+Updates properties of a bookmark.
+
+```typescript
+updateBookmark({ time, updates }: {
+  time: number;
+  updates: Partial<{ note: string; color: string; duration: number }>;
+}): Promise<void>
+```
+
+<ParamField path="time" type="number" required>
+  Time in seconds of the bookmark to update
+</ParamField>
+
+<ParamField path="updates" type="Partial<Bookmark>" required>
+  Properties to update
+</ParamField>
+
+**Example**
+
+```typescript
+await editor.scenes.updateBookmark({
+  time: 5.0,
+  updates: {
+    note: 'Key moment',
+    color: '#ff0000',
+    duration: 2.0
+  }
+});
+```
+
+### moveBookmark()
+
+Moves a bookmark to a new time.
+
+```typescript
+moveBookmark({ fromTime, toTime }: {
+  fromTime: number;
+  toTime: number;
+}): Promise<void>
+```
+
+<ParamField path="fromTime" type="number" required>
+  Current time of the bookmark in seconds
+</ParamField>
+
+<ParamField path="toTime" type="number" required>
+  New time for the bookmark in seconds
+</ParamField>
+
+**Example**
+
+```typescript
+// Move bookmark from 5s to 10s
+await editor.scenes.moveBookmark({
+  fromTime: 5.0,
+  toTime: 10.0
+});
+```
+
+### getBookmarkAtTime()
+
+Returns the bookmark at a specific time.
+
+```typescript
+getBookmarkAtTime({ time }: { time: number }): Bookmark | null
+```
+
+<ParamField path="time" type="number" required>
+  Time in seconds to check
+</ParamField>
+
+**Returns**
+
+- `Bookmark | null` - The bookmark if found, null otherwise
+
+**Example**
+
+```typescript
+const bookmark = editor.scenes.getBookmarkAtTime({ time: 5.0 });
+if (bookmark) {
+  console.log(`Bookmark note: ${bookmark.note}`);
+}
+```
+
+## Internal methods
+
+### loadProjectScenes()
+
+Loads scenes from storage for a project. Called internally when loading a project.
+
+```typescript
+loadProjectScenes({ projectId }: { projectId: string }): Promise<void>
+```
+
+<ParamField path="projectId" type="string" required>
+  ID of the project to load scenes from
+</ParamField>
+
+### initializeScenes()
+
+Initializes scenes for the current project. Called internally when creating or loading a project.
+
+```typescript
+initializeScenes({ scenes, currentSceneId }: {
+  scenes: TScene[];
+  currentSceneId?: string;
+}): void
+```
+
+<ParamField path="scenes" type="TScene[]" required>
+  Scenes to initialize
+</ParamField>
+
+<ParamField path="currentSceneId" type="string">
+  ID of the scene to make active
+</ParamField>
+
+### clearScenes()
+
+Clears all scenes. Called internally when closing a project.
+
+```typescript
+clearScenes(): void
+```
+
+### updateSceneTracks()
+
+Updates the tracks for the active scene. Called internally by TimelineManager.
+
+```typescript
+updateSceneTracks({ tracks }: { tracks: TimelineTrack[] }): void
+```
+
+<ParamField path="tracks" type="TimelineTrack[]" required>
+  Updated tracks
+</ParamField>
+
+### subscribe()
+
+Subscribes to scene state changes.
+
+```typescript
+subscribe(listener: () => void): () => void
+```
+
+<ParamField path="listener" type="() => void" required>
+  Function called when scene state changes
+</ParamField>
+
+**Returns**
+
+- `() => void` - Unsubscribe function
+
+**Example**
+
+```typescript
+const unsubscribe = editor.scenes.subscribe(() => {
+  console.log('Scenes changed');
+});
+```
+
+<Note>
+The `useEditor()` hook automatically subscribes to scene changes. Only use `subscribe()` directly in non-React code.
+</Note>

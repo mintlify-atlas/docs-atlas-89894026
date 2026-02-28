@@ -1,0 +1,365 @@
+---
+title: Architecture
+description: Understanding OpenCut's system architecture and design patterns
+---
+
+OpenCut is built as a privacy-first video editor with a focus on simplicity and ease of use. This guide covers the core architectural patterns and design decisions.
+
+## Project structure
+
+OpenCut uses a **Turborepo monorepo** structure with workspaces for apps and shared packages:
+
+```
+opencut/
+├── apps/
+│   └── web/                    # Main Next.js application
+│       ├── src/
+│       │   ├── components/     # UI and editor components
+│       │   ├── core/           # EditorCore singleton and managers
+│       │   ├── hooks/          # Custom React hooks
+│       │   ├── lib/            # Domain-specific logic
+│       │   ├── services/       # External service integrations
+│       │   ├── stores/         # State management (Zustand)
+│       │   ├── types/          # TypeScript type definitions
+│       │   └── utils/          # Generic helper utilities
+│       ├── public/             # Static assets
+│       └── package.json
+├── packages/
+│   ├── ui/                     # Shared UI component library
+│   └── env/                    # Environment variable validation
+├── docker-compose.yml
+├── turbo.json                  # Turborepo configuration
+└── package.json                # Root package.json
+```
+
+### Directory conventions
+
+- **`lib/`** - Domain logic specific to OpenCut (actions, commands, video processing)
+- **`utils/`** - Small, generic helper functions that could be reused in any application
+- **`services/`** - Integrations with external services and APIs
+- **`core/`** - The EditorCore singleton and manager system
+
+## Core editor system
+
+The editor uses a **singleton EditorCore** that manages all editor state through specialized managers.
+
+### Architecture overview
+
+```
+EditorCore (singleton)
+├── command: CommandManager        # Undo/redo system
+├── playback: PlaybackManager      # Video playback controls
+├── timeline: TimelineManager      # Timeline and track management
+├── scenes: ScenesManager          # Scene composition
+├── project: ProjectManager        # Project metadata and settings
+├── media: MediaManager            # Media asset management
+├── renderer: RendererManager      # Preview and export rendering
+├── save: SaveManager              # Auto-save functionality
+├── audio: AudioManager            # Audio processing
+└── selection: SelectionManager    # Element selection state
+```
+
+Each manager handles a specific domain of the editor and exposes methods for interacting with that domain.
+
+### Using EditorCore
+
+#### In React components
+
+**Always use the `useEditor()` hook:**
+
+```typescript
+import { useEditor } from '@/hooks/use-editor';
+
+function MyComponent() {
+  const editor = useEditor();
+  const tracks = editor.timeline.getTracks();
+
+  // Call methods
+  editor.timeline.addTrack({ type: 'media' });
+
+  // Display data (auto re-renders on changes)
+  return <div>{tracks.length} tracks</div>;
+}
+```
+
+The `useEditor()` hook:
+- Returns the singleton EditorCore instance
+- Subscribes to all manager state changes
+- Automatically triggers re-renders when state changes
+
+#### Outside React components
+
+**Use `EditorCore.getInstance()` directly:**
+
+```typescript
+// In utilities, event handlers, or non-React code
+import { EditorCore } from "@/core";
+
+const editor = EditorCore.getInstance();
+await editor.export({ format: "mp4", quality: "high" });
+```
+
+This is useful in:
+- Utility functions
+- Event handlers outside components
+- Tests
+- Complex multi-step operations
+
+## Actions system
+
+Actions are the **trigger layer** for user-initiated operations. They provide a consistent UX layer with toasts, validation, and keyboard shortcuts.
+
+### Defining actions
+
+The single source of truth is `apps/web/src/lib/actions/definitions.ts`:
+
+```typescript
+export const ACTIONS = {
+  "split-selected": {
+    description: "Split selected elements at playhead",
+    category: "editing",
+    defaultShortcuts: ["ctrl+b"],
+  },
+  "delete-selected": {
+    description: "Delete selected elements",
+    category: "editing",
+    defaultShortcuts: ["Delete"],
+  },
+  // ...
+};
+```
+
+### Implementing actions
+
+Action handlers are defined in `apps/web/src/hooks/use-editor-actions.ts`:
+
+```typescript
+import { useActionHandler } from '@/hooks/use-action-handler';
+
+function useEditorActions() {
+  const editor = useEditor();
+
+  useActionHandler(
+    "split-selected",
+    () => {
+      const selected = editor.selection.getSelectedElements();
+      if (selected.length === 0) {
+        toast.error("No elements selected");
+        return;
+      }
+      editor.timeline.splitElements({ ids: selected });
+      toast.success("Elements split");
+    },
+    undefined,
+  );
+}
+```
+
+### Using actions in components
+
+**Always use `invokeAction()` for user-triggered operations:**
+
+```typescript
+import { invokeAction } from '@/lib/actions';
+
+// Good - uses action system (toasts, validation, shortcuts)
+const handleSplit = () => invokeAction("split-selected");
+
+// Avoid - bypasses UX layer
+const handleSplit = () => editor.timeline.splitElements({ ... });
+```
+
+Direct `editor.xxx()` calls should be reserved for:
+- Internal implementation within commands
+- Test code
+- Complex multi-step operations where you need fine-grained control
+
+## Commands system
+
+Commands handle **undo/redo** functionality. They live in `apps/web/src/lib/commands/` organized by domain.
+
+### Command structure
+
+Each command extends `Command` from `apps/web/src/lib/commands/base-command.ts`:
+
+```typescript
+import { Command } from './base-command';
+
+export class SplitElementCommand extends Command {
+  private previousState: any;
+
+  constructor(private elementId: string) {
+    super();
+  }
+
+  execute() {
+    // Save current state
+    this.previousState = getCurrentState();
+    
+    // Perform the mutation
+    splitElement(this.elementId);
+  }
+
+  undo() {
+    // Restore the saved state
+    restoreState(this.previousState);
+  }
+}
+```
+
+### Commands organization
+
+Commands are organized by domain:
+
+```
+lib/commands/
+├── base-command.ts         # Base Command class
+├── timeline/               # Timeline-related commands
+├── media/                  # Media asset commands
+└── scene/                  # Scene composition commands
+```
+
+### Actions + Commands working together
+
+Actions and commands complement each other:
+
+- **Actions** = "What triggered this?" (user shortcuts, button clicks)
+- **Commands** = "How to do it (and undo it)?" (the actual operation)
+
+Example flow:
+1. User presses `Ctrl+B` (keyboard shortcut)
+2. Action system invokes `"split-selected"` action
+3. Action handler validates selection and shows toast
+4. Action handler creates and executes a `SplitElementCommand`
+5. Command saves state and performs the split
+6. User can undo with `Ctrl+Z`, which calls `command.undo()`
+
+## State management
+
+OpenCut uses multiple state management approaches:
+
+### EditorCore managers
+
+For editor state (timeline, playback, scenes):
+- Centralized in the EditorCore singleton
+- Each manager handles its domain
+- Subscribe via `useEditor()` hook
+
+### Zustand stores
+
+For UI and application state (located in `src/stores/`):
+- User preferences
+- UI panel visibility
+- Dialog state
+- Feature flags
+
+```typescript
+import { create } from 'zustand';
+
+export const useUIStore = create((set) => ({
+  sidebarOpen: true,
+  toggleSidebar: () => set((state) => ({ 
+    sidebarOpen: !state.sidebarOpen 
+  })),
+}));
+```
+
+### React state
+
+For component-local state:
+- Form inputs
+- Temporary UI state
+- Animation state
+
+## Technology stack
+
+### Frontend
+
+- **Next.js 16** - React framework with App Router
+- **React 19** - UI library
+- **TypeScript** - Type safety
+- **Tailwind CSS 4** - Styling
+- **Radix UI** - Accessible component primitives
+- **Zustand** - Lightweight state management
+- **Motion** - Animations
+
+### Editor
+
+- **FFmpeg.wasm** - Video processing in the browser
+- **WaveSurfer.js** - Audio waveform visualization
+- **HTML Canvas** - Preview rendering (being refactored to binary rendering)
+
+### Backend
+
+- **PostgreSQL** - Primary database
+- **Drizzle ORM** - Type-safe database access
+- **Redis** - Caching and rate limiting
+- **Better Auth** - Authentication
+
+### Build tools
+
+- **Turborepo** - Monorepo build system
+- **Bun** - Fast JavaScript runtime and package manager
+- **Biome** - Fast linter and formatter
+- **Docker** - Containerization
+
+## Key design patterns
+
+### Singleton pattern
+
+The EditorCore uses the singleton pattern to ensure a single source of truth for editor state across the application.
+
+### Manager pattern
+
+Each domain (timeline, playback, media) has its own manager that encapsulates the logic and state for that domain.
+
+### Command pattern
+
+Undo/redo functionality is implemented using the command pattern, where each operation is encapsulated in a command object.
+
+### Observer pattern
+
+Managers use EventEmitter3 to notify subscribers of state changes, allowing React components to re-render when relevant state updates.
+
+### Repository pattern
+
+Database access is abstracted through repository functions in `src/lib/db/`, keeping database logic separate from business logic.
+
+## Privacy-first architecture
+
+OpenCut is designed with privacy as a core principle:
+
+- **Local-first** - Video processing happens in the browser using FFmpeg.wasm
+- **No server-side rendering** - Videos never leave the user's device
+- **Optional cloud features** - Transcription and other cloud features are opt-in
+- **Minimal analytics** - Only anonymized, non-invasive analytics via Databuddy
+
+## Preview system refactor
+
+<Warning>
+The preview rendering system is currently being refactored from HTML/DOM-based rendering to a binary rendering approach similar to CapCut.
+</Warning>
+
+**Current approach:**
+- Renders preview using HTML/CSS/Canvas
+- Inconsistent with export output
+- Limited performance and quality
+
+**New approach (in progress):**
+- Binary rendering engine
+- Consistent preview and export
+- Better performance and quality
+- More accurate representation of final output
+
+Contributors should avoid preview panel enhancements (fonts, stickers, effects) until this refactor is complete.
+
+## Next steps
+
+<CardGroup cols={2}>
+  <Card title="Contributing" icon="code-pull-request" href="/development/contributing">
+    Learn how to contribute to OpenCut
+  </Card>
+  <Card title="Testing" icon="vial" href="/development/testing">
+    Understand the testing approach
+  </Card>
+</CardGroup>

@@ -1,0 +1,267 @@
+---
+title: useEditorActions() & useActionHandler()
+description: React hooks for registering action handlers in the OpenCut editor
+---
+
+## Overview
+
+OpenCut uses an actions system to handle user-triggered operations. Actions are defined in `@/lib/actions/definitions.ts` and handlers are registered using these hooks.
+
+## useEditorActions()
+
+A top-level hook that registers all core editor action handlers for playback, timeline operations, and editing commands.
+
+### Signature
+
+```typescript
+function useEditorActions(): void
+```
+
+### Usage
+
+This hook is typically called once at the application level to set up all standard editor actions:
+
+```typescript
+import { useEditorActions } from '@/hooks/actions/use-editor-actions';
+
+function EditorProvider() {
+  useEditorActions();
+  
+  return <Editor />;
+}
+```
+
+### Registered actions
+
+The hook registers handlers for these action categories:
+
+**Playback controls:**
+- `toggle-play` - Toggle play/pause
+- `stop-playback` - Stop and reset to start
+- `seek-forward` - Seek forward by seconds
+- `seek-backward` - Seek backward by seconds
+- `frame-step-forward` - Step forward one frame
+- `frame-step-backward` - Step backward one frame
+- `jump-forward` - Jump forward 5 seconds
+- `jump-backward` - Jump backward 5 seconds
+- `goto-start` - Go to timeline start
+- `goto-end` - Go to timeline end
+
+**Timeline editing:**
+- `split` - Split elements at playhead
+- `split-left` - Split and keep right side
+- `split-right` - Split and keep left side
+- `delete-selected` - Delete selected elements
+- `duplicate-selected` - Duplicate selected elements
+
+**Selection:**
+- `select-all` - Select all timeline elements
+- `copy-selected` - Copy selected to clipboard
+- `paste-copied` - Paste from clipboard
+
+**Element properties:**
+- `toggle-elements-muted-selected` - Toggle mute
+- `toggle-elements-visibility-selected` - Toggle visibility
+
+**Other:**
+- `toggle-bookmark` - Add/remove bookmark at playhead
+- `toggle-snapping` - Toggle timeline snapping
+- `undo` - Undo last command
+- `redo` - Redo last undone command
+
+## useActionHandler()
+
+A hook for registering a handler for a specific action.
+
+### Signature
+
+```typescript
+function useActionHandler<A extends TAction>(
+  action: A,
+  handler: TActionFunc<A>,
+  isActive: TActionHandlerOptions
+): void
+```
+
+### Parameters
+
+<ParamField path="action" type="TAction" required>
+  The action identifier (e.g., `"toggle-play"`, `"split"`).
+</ParamField>
+
+<ParamField path="handler" type="TActionFunc<A>" required>
+  The function to execute when the action is invoked. Receives optional arguments and trigger type.
+  
+  ```typescript
+  (arg?: TArgOfAction<A>, trigger?: TInvocationTrigger) => void
+  ```
+</ParamField>
+
+<ParamField path="isActive" type="boolean | MutableRefObject<boolean> | undefined" required>
+  Controls whether the handler is active:
+  - `undefined` - Always active
+  - `boolean` - Static active state
+  - `MutableRefObject<boolean>` - Dynamic active state via ref
+</ParamField>
+
+### Examples
+
+#### Basic action handler
+
+```typescript
+import { useActionHandler } from '@/hooks/actions/use-action-handler';
+import { useEditor } from '@/hooks/use-editor';
+
+function MyComponent() {
+  const editor = useEditor();
+
+  useActionHandler(
+    "toggle-play",
+    () => {
+      editor.playback.toggle();
+    },
+    undefined
+  );
+
+  return <div>Press Space to play/pause</div>;
+}
+```
+
+#### Action with arguments
+
+```typescript
+import { useActionHandler } from '@/hooks/actions/use-action-handler';
+import { useEditor } from '@/hooks/use-editor';
+
+function SeekControls() {
+  const editor = useEditor();
+
+  useActionHandler(
+    "seek-forward",
+    (args) => {
+      const seconds = args?.seconds ?? 1;
+      editor.playback.seek({
+        time: Math.min(
+          editor.timeline.getTotalDuration(),
+          editor.playback.getCurrentTime() + seconds
+        )
+      });
+    },
+    undefined
+  );
+
+  return null;
+}
+```
+
+#### Conditional handler
+
+```typescript
+import { useActionHandler } from '@/hooks/actions/use-action-handler';
+import { useEditor } from '@/hooks/use-editor';
+import { useState } from 'react';
+
+function ConditionalActions() {
+  const editor = useEditor();
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  // Only handle delete when in edit mode
+  useActionHandler(
+    "delete-selected",
+    () => {
+      const selected = editor.selection.getSelected();
+      editor.timeline.deleteElements({ elements: selected });
+    },
+    isEditMode
+  );
+
+  return (
+    <button onClick={() => setIsEditMode(!isEditMode)}>
+      {isEditMode ? 'Exit edit mode' : 'Enter edit mode'}
+    </button>
+  );
+}
+```
+
+#### Complex handler with state
+
+```typescript
+import { useActionHandler } from '@/hooks/actions/use-action-handler';
+import { useEditor } from '@/hooks/use-editor';
+import { useElementSelection } from '@/hooks/timeline/element/use-element-selection';
+import { getElementsAtTime } from '@/lib/timeline';
+
+function SplitHandler() {
+  const editor = useEditor();
+  const { selectedElements } = useElementSelection();
+
+  useActionHandler(
+    "split",
+    () => {
+      const currentTime = editor.playback.getCurrentTime();
+      const elementsToSplit =
+        selectedElements.length > 0
+          ? selectedElements
+          : getElementsAtTime({
+              tracks: editor.timeline.getTracks(),
+              time: currentTime,
+            });
+
+      if (elementsToSplit.length === 0) return;
+
+      editor.timeline.splitElements({
+        elements: elementsToSplit,
+        splitTime: currentTime,
+      });
+    },
+    undefined
+  );
+
+  return null;
+}
+```
+
+## Action invocation
+
+To trigger actions from UI components, use `invokeAction()` instead of calling editor methods directly:
+
+```typescript
+import { invokeAction } from '@/lib/actions';
+
+// Good - uses action system with UX feedback
+const handleSplit = () => invokeAction("split");
+
+// Avoid - bypasses action system
+const handleSplit = () => editor.timeline.splitElements({ ... });
+```
+
+<Note>
+The action system provides user feedback (toasts, validation) that direct editor method calls bypass. Use `invokeAction()` for user-triggered operations.
+</Note>
+
+## Types
+
+```typescript
+// Action identifier
+type TAction = "toggle-play" | "split" | "delete-selected" | ...;
+
+// Action function signature
+type TActionFunc<A extends TAction> = A extends TActionWithArgs
+  ? (arg: TArgOfAction<A>, trigger?: TInvocationTrigger) => void
+  : (_?: undefined, trigger?: TInvocationTrigger) => void;
+
+// Invocation trigger (how the action was invoked)
+type TInvocationTrigger = "keypress" | "mouseclick";
+
+// Handler options
+type TActionHandlerOptions =
+  | MutableRefObject<boolean>
+  | boolean
+  | undefined;
+```
+
+## See also
+
+- [useEditor](/api/use-editor) - Access the editor instance
+- [Actions system](/api/actions) - Learn about the actions architecture
+- [EditorCore](/api/editor-core) - The singleton editor instance
