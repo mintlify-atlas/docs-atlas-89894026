@@ -1,0 +1,112 @@
+{
+  "projectType": "saas",
+  "projectName": "OpenCut",
+  "projectDescription": "A free, open-source video editor for web, desktop, and mobile with privacy-first design.",
+  "theme": "willow",
+  "primaryColor": "#8b5cf6",
+  "lightColor": "#a78bfa",
+  "darkColor": "#7c3aed",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Get Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/editor-core",
+              "concepts/timeline",
+              "concepts/scenes",
+              "concepts/actions",
+              "concepts/commands"
+            ]
+          },
+          {
+            "group": "Features",
+            "pages": [
+              "features/timeline-editing",
+              "features/multi-track",
+              "features/keyboard-shortcuts",
+              "features/project-management",
+              "features/export"
+            ]
+          },
+          {
+            "group": "Development",
+            "pages": [
+              "development/setup",
+              "development/architecture",
+              "development/contributing",
+              "development/testing"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Core",
+            "pages": [
+              "api/editor-core",
+              "api/playback-manager",
+              "api/timeline-manager",
+              "api/scene-manager",
+              "api/project-manager",
+              "api/media-manager"
+            ]
+          },
+          {
+            "group": "Actions & Commands",
+            "pages": [
+              "api/actions",
+              "api/commands",
+              "api/command-manager"
+            ]
+          },
+          {
+            "group": "Hooks",
+            "pages": [
+              "api/use-editor",
+              "api/use-editor-actions"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "Timeline-based video editing with multi-track support",
+    "Privacy-first architecture - videos stay on device",
+    "Real-time preview and playback controls",
+    "Comprehensive keyboard shortcuts and actions system",
+    "Undo/redo with command pattern",
+    "Project management with auto-save",
+    "Scene-based editing workflow",
+    "Export to multiple formats",
+    "Web, desktop, and mobile support"
+  ],
+  "publicApiSurface": [
+    "EditorCore.getInstance()",
+    "PlaybackManager",
+    "TimelineManager",
+    "ScenesManager",
+    "ProjectManager",
+    "MediaManager",
+    "RendererManager",
+    "CommandManager",
+    "useEditor()",
+    "useEditorActions()",
+    "invokeAction()",
+    "Actions: toggle-play, split, delete-selected, undo, redo",
+    "Commands: execute(), undo()"
+  ]
+}
